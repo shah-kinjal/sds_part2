@@ -1,7 +1,7 @@
 [project]
 name = "input-validator"
 version = "0.1.0"
-description = "Add your description here"
+description = "Property tax document input file validation"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

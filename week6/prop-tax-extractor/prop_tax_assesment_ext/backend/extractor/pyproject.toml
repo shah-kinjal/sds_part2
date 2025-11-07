@@ -1,7 +1,7 @@
 [project]
 name = "extractor"
 version = "0.1.0"
-description = "Document extraction function"
+description = "Property tax extraction function"
 requires-python = ">=3.13"
 dependencies = [
     "strands-agents=1.15.0",
