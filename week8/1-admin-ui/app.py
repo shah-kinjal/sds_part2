@@ -14,6 +14,9 @@ _ = Twin(app, "Twin",
          kb_id=kb.kb.knowledge_base_id,
          kb_data_src_id=kb.kb.data_source_id,
          kb_input_bucket=kb.input_bucket,
+         custom_certificate_name="ShahKinjal.com cert",
+         custom_certificate_arn="arn:aws:acm:us-east-1:798627562337:certificate/d1f653e2-5caf-450b-8100-2c5abdde9a9a",
+         custom_domain_name="twin.shahkinjal.com",
          env=env,
         )
 

@@ -12,6 +12,7 @@ class Twin(cdk.Stack):
                  kb_data_src_id: str, # Bedrock Knowledge Base Data Source ID
                  kb_input_bucket: Bucket,
                  custom_certificate_arn: str|None = None,  # Optional custom ACM certificate ARN
+                 custom_certificate_name: str|None = None,  # Optional custom ACM certificate name
                  custom_domain_name: str|None = None,  # Optional custom domain name
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
