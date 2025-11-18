@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Avatar - KSA</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <title>Chat with Digital Twin</title>
     <style>
         * {
             margin: 0;
@@ -14,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #a8e6cf 0%, #ffd3b6 50%, #ffaaa5 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
             display: flex;
             align-items: center;
@@ -34,46 +33,15 @@
         }
 
         .chat-header {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
-            color: #2d3436;
+            background: #2c3e50;
+            color: white;
             padding: 20px;
             text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .logo {
-            width: 60px;
-            height: 60px;
-            flex-shrink: 0;
-        }
-
-        .logo-text {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            font-weight: 700;
-            font-size: 14px;
-            fill: #2d3436;
-        }
-
-        .header-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
         }
 
         .chat-header h1 {
             font-size: 24px;
             font-weight: 600;
-            margin: 0;
         }
 
         .chat-header p {
@@ -105,120 +73,18 @@
             border-radius: 18px;
             word-wrap: break-word;
             line-height: 1.4;
-        }
-
-        .message.user .message-bubble {
             white-space: pre-wrap;
         }
 
-        .message.assistant .message-bubble h1,
-        .message.assistant .message-bubble h2,
-        .message.assistant .message-bubble h3 {
-            margin-top: 0.5em;
-            margin-bottom: 0.5em;
-            font-weight: 600;
-        }
-
-        .message.assistant .message-bubble h1 {
-            font-size: 1.5em;
-        }
-
-        .message.assistant .message-bubble h2 {
-            font-size: 1.3em;
-        }
-
-        .message.assistant .message-bubble h3 {
-            font-size: 1.1em;
-        }
-
-        .message.assistant .message-bubble p {
-            margin: 0.5em 0;
-        }
-
-        .message.assistant .message-bubble ul,
-        .message.assistant .message-bubble ol {
-            margin: 0.5em 0;
-            padding-left: 1.5em;
-        }
-
-        .message.assistant .message-bubble li {
-            margin: 0.25em 0;
-        }
-
-        .message.assistant .message-bubble code {
-            background: rgba(136, 216, 163, 0.3);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            color: #2d3436;
-        }
-
-        .message.assistant .message-bubble pre {
-            background: rgba(136, 216, 163, 0.2);
-            padding: 10px;
-            border-radius: 6px;
-            overflow-x: auto;
-            margin: 0.5em 0;
-            border-left: 3px solid #88d8a3;
-        }
-
-        .message.assistant .message-bubble pre code {
-            background: none;
-            padding: 0;
-        }
-
-        .message.assistant .message-bubble blockquote {
-            border-left: 3px solid #88d8a3;
-            padding-left: 1em;
-            margin: 0.5em 0;
-            font-style: italic;
-            background: rgba(136, 216, 163, 0.15);
-            padding: 0.5em 1em;
-            border-radius: 4px;
-        }
-
-        .message.assistant .message-bubble a {
-            color: #ff8b94;
-            text-decoration: underline;
-        }
-
-        .message.assistant .message-bubble strong {
-            font-weight: 600;
-        }
-
-        .message.assistant .message-bubble em {
-            font-style: italic;
-        }
-
-        .message.assistant .message-bubble table {
-            border-collapse: collapse;
-            margin: 0.5em 0;
-            width: 100%;
-        }
-
-        .message.assistant .message-bubble th,
-        .message.assistant .message-bubble td {
-            border: 1px solid rgba(0, 0, 0, 0.2);
-            padding: 6px 10px;
-            text-align: left;
-        }
-
-        .message.assistant .message-bubble th {
-            background: rgba(136, 216, 163, 0.3);
-            font-weight: 600;
-            color: #2d3436;
-        }
-
         .message.assistant .message-bubble {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
-            color: #2d3436;
+            background: #e3f2fd;
+            color: #1565c0;
             border-bottom-left-radius: 6px;
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, #ffaaa5 0%, #ff8b94 100%);
-            color: #2d3436;
+            background: #2c3e50;
+            color: white;
             border-bottom-right-radius: 6px;
         }
 
@@ -248,25 +114,23 @@
         }
 
         .chat-input input:focus {
-            border-color: #ff8b94;
+            border-color: #667eea;
         }
 
         .chat-input button {
-            background: linear-gradient(135deg, #ffaaa5 0%, #ff8b94 100%);
-            color: #2d3436;
+            background: #667eea;
+            color: white;
             border: none;
             padding: 12px 24px;
             border-radius: 25px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(255, 139, 148, 0.4);
+            transition: background 0.3s;
         }
 
         .chat-input button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 139, 148, 0.6);
+            background: #5a6fd8;
         }
 
         .chat-input button:disabled {
@@ -279,7 +143,7 @@
             align-items: center;
             gap: 8px;
             padding: 12px 16px;
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            background: #e3f2fd;
             border-radius: 18px;
             border-bottom-left-radius: 6px;
             max-width: 70%;
@@ -294,7 +158,7 @@
         .typing-dots span {
             width: 8px;
             height: 8px;
-            background: #88d8a3;
+            background: #1565c0;
             border-radius: 50%;
             animation: typing 1.4s infinite ease-in-out;
         }
@@ -332,34 +196,8 @@
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            <div class="logo-container">
-                <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Background circle -->
-                    <circle cx="50" cy="50" r="45" fill="#ff8b94" opacity="0.2"/>
-                    <!-- Main circle -->
-                    <circle cx="50" cy="50" r="35" fill="none" stroke="#88d8a3" stroke-width="3"/>
-                    <!-- Inner circles representing digital avatar concept -->
-                    <circle cx="50" cy="50" r="25" fill="none" stroke="#ff8b94" stroke-width="2" stroke-dasharray="5,5"/>
-                    <circle cx="50" cy="50" r="15" fill="#88d8a3" opacity="0.6"/>
-                    <!-- KSA Text -->
-                    <text x="50" y="55" class="logo-text" text-anchor="middle" dominant-baseline="middle">KSA</text>
-                    <!-- Connection lines -->
-                    <line x1="50" y1="15" x2="50" y2="35" stroke="#88d8a3" stroke-width="2"/>
-                    <line x1="50" y1="65" x2="50" y2="85" stroke="#ff8b94" stroke-width="2"/>
-                    <line x1="15" y1="50" x2="35" y2="50" stroke="#88d8a3" stroke-width="2"/>
-                    <line x1="65" y1="50" x2="85" y2="50" stroke="#ff8b94" stroke-width="2"/>
-                    <!-- Small nodes -->
-                    <circle cx="50" cy="15" r="4" fill="#88d8a3"/>
-                    <circle cx="50" cy="85" r="4" fill="#ff8b94"/>
-                    <circle cx="15" cy="50" r="4" fill="#88d8a3"/>
-                    <circle cx="85" cy="50" r="4" fill="#ff8b94"/>
-                </svg>
-            </div>
-            <div class="header-content">
-                <h1 id="chat-title">KSA Digital Avatar</h1>
-                <p>Ask me anything about my professional background and experience</p>
-            </div>
-            <button class="clear-chat-button" id="clear-chat-button">Clear Chat</button>
+            <h1 id="chat-title">Chat with Digital Twin</h1>
+            <p>Ask me anything about my professional background and experience</p>
         </div>
         <div class="chat-messages" id="chat-messages">
             <div class="typing-indicator" id="typing-indicator">
@@ -379,23 +217,17 @@
 
     <script>
         // CONFIGURATION - Edit this name to customize for different jobseekers
-        const JOBSEEKER_NAME = "Kinjal Shah";
+        const JOBSEEKER_NAME = "No Juan";
         
         // Update page title with jobseeker name
-        document.getElementById('chat-title').textContent = `${JOBSEEKER_NAME}'s KSA Digital Avatar`;
-        document.title = `KSA Digital Avatar - ${JOBSEEKER_NAME}`;
+        document.getElementById('chat-title').textContent = `Chat with ${JOBSEEKER_NAME}'s Digital Twin`;
+        document.title = `Chat with ${JOBSEEKER_NAME}`;
 
         // DOM elements
         const messagesContainer = document.getElementById('chat-messages');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator');
-
-        // Configure marked.js for markdown rendering
-        marked.setOptions({
-            breaks: true,
-            gfm: true
-        });
 
         // Initialize chat
         document.addEventListener('DOMContentLoaded', () => {
@@ -422,8 +254,7 @@
                 messagesContainer.innerHTML = '';
                 
                 data.messages.forEach(message => {
-                    const content = message.content[0].text;
-                    displayMessage(message.role, content, false);
+                    displayMessage(message.role, message.content[0].text, false);
                 });
                 
                 scrollToBottom();
@@ -485,12 +316,12 @@
                                 assistantMessage += textChunk;
                                 
                                 if (!messageElement) {
-                                    messageElement = createMessageElement('assistant', '', true);
+                                    messageElement = createMessageElement('assistant', '');
                                     messagesContainer.appendChild(messageElement);
                                 }
                                 
                                 const bubble = messageElement.querySelector('.message-bubble');
-                                bubble.innerHTML = marked.parse(assistantMessage);
+                                bubble.textContent = assistantMessage;
                                 scrollToBottom();
                             } catch (e) {
                                 // If JSON parsing fails, treat as plain text (fallback)
@@ -498,12 +329,12 @@
                                 assistantMessage += data;
                                 
                                 if (!messageElement) {
-                                    messageElement = createMessageElement('assistant', '', true);
+                                    messageElement = createMessageElement('assistant', '');
                                     messagesContainer.appendChild(messageElement);
                                 }
                                 
                                 const bubble = messageElement.querySelector('.message-bubble');
-                                bubble.innerHTML = marked.parse(assistantMessage);
+                                bubble.textContent = assistantMessage;
                                 scrollToBottom();
                             }
                         }
@@ -522,8 +353,7 @@
         }
 
         function displayMessage(role, content, animate = true) {
-            const isMarkdown = role === 'assistant';
-            const messageElement = createMessageElement(role, content, isMarkdown);
+            const messageElement = createMessageElement(role, content);
             messagesContainer.appendChild(messageElement);
             
             if (animate) {
@@ -539,18 +369,13 @@
             scrollToBottom();
         }
 
-        function createMessageElement(role, content, isMarkdown = false) {
+        function createMessageElement(role, content) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
             
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
-            
-            if (isMarkdown && content) {
-                bubbleDiv.innerHTML = marked.parse(content);
-            } else {
-                bubbleDiv.textContent = content;
-            }
+            bubbleDiv.textContent = content;
             
             messageDiv.appendChild(bubbleDiv);
             return messageDiv;

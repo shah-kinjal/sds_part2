@@ -12,8 +12,9 @@ import logging
 import os
 import uuid
 import uvicorn
-from questions import Question, QuestionManager
+from questions import Question, QuestionManager, Visitor
 
+name="Kinjal Shah"
 # Re-use boto session across invocations
 boto_session = boto3.Session()
 state_bucket_name = os.environ.get("STATE_BUCKET", "")
@@ -26,7 +27,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-model_id = os.environ.get("MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
+model_id = os.environ.get("MODEL_ID", "")
 bedrock_model = BedrockModel(
     model_id=model_id,
     # Add Guardrails here
@@ -36,16 +37,62 @@ conversation_manager = SlidingWindowConversationManager(
     window_size=10,  # Maximum number of messages to keep
     should_truncate_results=True, # Enable truncating the tool result when a message is too large for the model's context window 
 )
-SYSTEM_PROMPT = """
-You are a digital twin of No Juan. You should answer questions about their career for prospective employers.
-
+SYSTEM_PROMPT = f"""
+You are a digital twin of {name}. You should answer questions about their career for prospective employers.
+You are humorous in your answers when appropriate. Keep the asnwer to the point and concise. No need to provide the whole story.
 When searching for information via a tool, tell the user you are "trying to remember" the information, and then use the tool to retrieve it.
+If you don't know the answer to a question, use the save_unanswered_question tool to save the question to the database for future review 
+and let the user know that you've added the question to the database for future review and to comeback for an answer. 
+Gently ask for a contact information after a brief interaction. Dont be pushy about it.
+Capture the visitor information using the capture_visitor_info tool when someone introduces themselves or provides their contact information.
 """
 app = FastAPI()
 question_manager = QuestionManager()
 
+@tool
+def save_unanswered_question(question: str) -> str:
+    """
+    Saves an unanswered question to the database for future review.
+    Use this when you don't know the answer to a question or when you need
+    more information to provide a proper response.
+    
+    Args:
+        question: The question that you couldn't answer
+        
+    Returns:
+        A confirmation message with the question ID
+    """
+    try:
+        saved_question = question_manager.add_question(question=question)
+        logger.info(f"Saved unanswered question with ID: {saved_question.question_id}")
+        return f"Successfully saved the unanswered question to the database with ID: {saved_question.question_id}"
+    except Exception as e:
+        logger.error(f"Failed to save question: {str(e)}")
+        return f"Failed to save the question to the database: {str(e)}"
+
+@tool
+def capture_visitor_info(name: str, email: str) -> str:
+    """
+    Captures visitor information (name and email) and saves it to the visitor log.
+    Use this when someone introduces themselves or provides their contact information.
+    
+    Args:
+        name: The visitor's name
+        email: The visitor's email address
+        
+    Returns:
+        A confirmation message with the visitor ID
+    """
+    try:
+        visitor = question_manager.add_visitor(name=name, email=email)
+        logger.info(f"Captured visitor info for {name} ({email}) with ID: {visitor.visitor_id}")
+        return f"Successfully captured visitor information for {name} with ID: {visitor.visitor_id}"
+    except Exception as e:
+        logger.error(f"Failed to capture visitor info: {str(e)}")
+        return f"Failed to capture visitor information: {str(e)}"
+
 def session(id: str) -> Agent:
-    tools = [retrieve]
+    tools = [retrieve, save_unanswered_question, capture_visitor_info]
     session_manager = S3SessionManager(
         boto_session=boto_session,
         bucket=state_bucket_name,

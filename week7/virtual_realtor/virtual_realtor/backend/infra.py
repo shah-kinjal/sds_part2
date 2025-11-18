@@ -1,8 +1,9 @@
-from aws_cdk import Duration, BundlingOptions, Fn, Stack
+from aws_cdk import Duration, BundlingOptions, Fn, Stack, RemovalPolicy
 from constructs import Construct
 import aws_cdk.aws_iam as iam
 import aws_cdk.aws_lambda as _lambda
 import aws_cdk.aws_s3 as s3
+import aws_cdk.aws_dynamodb as dynamodb
 
 
 class Backend(Construct):
@@ -16,6 +17,18 @@ class Backend(Construct):
         super().__init__(scope, id)
 
         state_bucket = s3.Bucket(self, 'StateBucket')
+        
+        # Create DynamoDB table for Q&A storage with TTL
+        qa_table = dynamodb.Table(
+            self, 'QATable',
+            partition_key=dynamodb.Attribute(
+                name='question_hash',
+                type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            time_to_live_attribute='ttl',
+            removal_policy=RemovalPolicy.DESTROY  # For development - change for production
+        )
         fn = _lambda.Function(self, 'StateFunction',
                               function_name='VirtualRealtor',
                               timeout=Duration.seconds(120),
@@ -47,11 +60,15 @@ class Backend(Construct):
                                     "AWS_LWA_INVOKE_MODE": "response_stream",
                                     "STATE_BUCKET": state_bucket.bucket_name,
                                     "KNOWLEDGE_BASE_ID": kb_id,
+                                    "QA_TABLE_NAME": qa_table.table_name,
                                 },
                               memory_size=1024,
                              )
 
         _ = state_bucket.grant_read_write(fn)
+        # Grant DynamoDB permissions to the Lambda function
+        qa_table.grant_read_write_data(fn)
+        
         # Add Bedrock permissions to the Lambda function
         fn.add_to_role_policy(
             iam.PolicyStatement(

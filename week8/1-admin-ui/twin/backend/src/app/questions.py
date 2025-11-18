@@ -20,6 +20,16 @@ class Question(BaseModel):
     processed: bool = False
 
 
+class Visitor(BaseModel):
+    """
+    Represents a visitor to be logged.
+    """
+    visitor_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: str
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+
+
 class QuestionManager:
     """
     Manages questions in DynamoDB.
@@ -82,4 +92,41 @@ class QuestionManager:
                 logger.error(f"Failed to publish to SNS topic {self.notification_topic_arn}: {e}", exc_info=True)
 
         return new_question
+
+    def add_visitor(self, name: str, email: str) -> Visitor:
+        """
+        Adds a new visitor to the visitor log in DynamoDB.
+
+        :param name: The visitor's name.
+        :param email: The visitor's email address.
+        :return: The created Visitor object.
+        """
+        new_visitor = Visitor(
+            name=name,
+            email=email
+        )
+
+        item_data = new_visitor.model_dump()
+        item_data['PK'] = 'VISITOR_LOG'
+        item_data['SK'] = new_visitor.visitor_id
+
+        self.table.put_item(
+            Item=item_data
+        )
+        if self.notification_topic_arn:
+            try:
+                message = f"A new visitor has been added:\n\n{name} ({email})"
+                self.sns_client.publish(
+                    TopicArn=self.notification_topic_arn,
+                    Message=message,
+                    Subject="New Visitor Added"
+                )
+                logger.info(f"Published new visitor notification to SNS topic {self.notification_topic_arn}")
+            except Exception as e:
+                # Do not fail the request if SNS notification fails
+                logger.error(f"Failed to publish to SNS topic {self.notification_topic_arn}: {e}", exc_info=True)
+
+        logger.info(f"Added visitor to log: {name} ({email}) with ID: {new_visitor.visitor_id}")
+
+        return new_visitor
 
