@@ -361,7 +361,7 @@
 					</div>
 					<div>
 						<h2 class="text-3xl font-bold text-slate-900 dark:text-white">Visitor Log</h2>
-						<p class="text-slate-600 dark:text-slate-400">Track who has interacted with your digital twin</p>
+						<p class="text-slate-600 dark:text-slate-400">Track who has interacted with your virtual realtor</p>
 					</div>
 				</div>
 				<div class="text-right">
@@ -409,7 +409,7 @@
 				</div>
 				<h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">No visitors yet</h3>
 				<p class="text-lg text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">
-					Visitor information will appear here when someone shares their contact details with your digital twin.
+					Visitor information will appear here when someone shares their contact details with your virtual realtor.
 				</p>
 			</div>
 		{:else}
