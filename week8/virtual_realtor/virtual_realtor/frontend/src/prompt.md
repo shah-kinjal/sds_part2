@@ -1,7 +1,7 @@
 
 Create a single page index.html file which provides a professional and clean looking chat interface.
 The index.html should use inline CSS and Javascript.
-The chat is for a prospective buyer or renter to chat with a virtual realtor.
+The chat is for a prospective employer to chat with a digital twin of the jobseeker.
 Set the name of the jobseeker using a variable set at the top of the JavaScript, so that it will be easy
 for someone to edit the name to use it for themself.
 

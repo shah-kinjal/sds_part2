@@ -1,5 +1,5 @@
 We are working on a SvelteKit 5 SPA written in TypeScript.
-All files should be under `week8/virtual_realtor/virtual_realtor/frontend/admin`.
+All files should be under `week8/1-admin-ui/twin/frontend/admin`.
 
 When creating code, create separate libraries and group logically into
 files.
@@ -18,7 +18,7 @@ via `import.meta.env`:
 When building the UI, spend the time to make it look clean, crisp and professional.
 The lucide-svelte icon toolkit is available and should be used.
 Tailwind CSS is available and should be used
-Reference the API documentation at `week8/virtual_realtor/virtual_realtor/admin/src/app/API.md`
+Reference the API documentation at `week8/1-admin-ui/twin/admin/src/app/API.md`
 
 # To Do
 
