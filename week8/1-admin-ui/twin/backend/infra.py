@@ -15,6 +15,8 @@ class Backend(Construct):
                  kb_arn: str, # Bedrock Knowledge Base ARN
                  kb_id: str,  # Bedrock Knowledge Base ID
                  dynamo_db_table: TableV2, # Used to store unanswered questions
+                 openai_api_key: str | None = None, # OpenAI API key
+                 openai_model_id: str = "gpt-4o", # OpenAI model ID
                  ) -> None:
         super().__init__(scope, id)
 
@@ -50,6 +52,8 @@ class Backend(Construct):
                                     "DDB_TABLE": dynamo_db_table.table_name,
                                     "KNOWLEDGE_BASE_ID": kb_id,
                                     "MODEL_ID": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                                    "OPENAI_API_KEY": openai_api_key or "",
+                                    "OPENAI_MODEL_ID": openai_model_id,
                                     "PORT": "8000",
                                     "STATE_BUCKET": state_bucket.bucket_name,
                                     "NOTIFICATION_TOPIC_ARN": notification_topic.topic_arn,

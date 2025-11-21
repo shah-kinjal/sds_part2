@@ -11,6 +11,8 @@ class VirtualRealtor(cdk.Stack):
                  kb_id: str,  # Bedrock Knowledge Base ID
                  kb_data_src_id: str, # Bedrock Knowledge Base Data Source ID
                  kb_input_bucket: Bucket,
+                 openai_api_key: str | None = None,  # Optional OpenAI API key
+                 openai_model_id: str = "gpt-4o",  # OpenAI model ID
                  custom_certificate_arn: str|None = None,  # Optional custom ACM certificate ARN
                  custom_certificate_name: str|None = None,  # Optional custom ACM certificate name
                  custom_domain_name: str|None = None,  # Optional custom domain name
@@ -26,6 +28,8 @@ class VirtualRealtor(cdk.Stack):
                           kb_arn=kb_arn,
                           kb_id=kb_id,
                           dynamo_db_table=admin.dynamodb_table,
+                          openai_api_key=openai_api_key,
+                          openai_model_id=openai_model_id,
                          )
         frontend = Frontend(self, 'Frontend',
                             backend_endpoint=backend.domain_name,

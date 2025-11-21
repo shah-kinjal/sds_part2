@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands import Agent, tool
-from strands.models import BedrockModel
+from strands.models import BedrockModel, OpenAIModel
 from strands.session.s3_session_manager import S3SessionManager
 from strands_tools import retrieve
 import boto3
@@ -36,6 +36,16 @@ model_id = os.environ.get("MODEL_ID", "")
 bedrock_model = BedrockModel(
     model_id=model_id,
     # Add Guardrails here
+)
+openai_model = OpenAIModel(
+    client_args={
+        "api_key": os.environ.get("OPENAI_API_KEY", ""),
+    },
+    model_id=os.environ.get("OPENAI_MODEL_ID", "gpt-4o"),
+    params={
+        "max_tokens": 1000,
+        "temperature": 0.7, 
+    }
 )
 current_agent: Agent | None = None
 conversation_manager = SlidingWindowConversationManager(
@@ -195,6 +205,86 @@ def chat_delete(request: Request):
     new_session_id = str(uuid.uuid4())
     response.set_cookie(key="session_id", value=new_session_id)
     return response
+
+@app.get('/api/suggestions')
+async def get_suggestions(request: Request):
+    """
+    Generate 3 contextually relevant question suggestions based on the conversation history.
+    """
+    session_id = request.cookies.get("session_id", str(uuid.uuid4()))
+    agent = session(session_id)
+    
+    # Build context from conversation history
+    conversation_context = ""
+    if agent.messages:
+        # Get last few messages for context
+        recent_messages = agent.messages[-4:] if len(agent.messages) > 4 else agent.messages
+        for msg in recent_messages:
+            role = msg.get("role", "")
+            if msg.get("content") and len(msg["content"]) > 0 and "text" in msg["content"][0]:
+                text = msg["content"][0]["text"]
+                conversation_context += f"{role}: {text}\n"
+    
+    # Create a prompt to generate suggestions
+    if conversation_context:
+        suggestion_prompt = f"""Based on this conversation history:
+
+{conversation_context}
+
+Generate exactly 3 relevant follow-up questions that the user might want to ask about properties for sale. 
+These should be natural questions a potential home buyer would ask.
+Return ONLY the 3 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3"]"""
+    else:
+        suggestion_prompt = """Generate exactly 3 common questions that someone looking for properties might ask a realtor.
+Return ONLY the 3 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3"]"""
+    
+    try:
+        # Use the model directly without tools for simple generation
+        response_text = ""
+        async for event in bedrock_model.generate_stream(
+            messages=[{"role": "user", "content": suggestion_prompt}],
+            system=[{"text": "You are a helpful assistant that generates relevant real estate questions. Always respond with valid JSON only."}]
+        ):
+            if "data" in event:
+                response_text += event["data"]
+        
+        # Parse the JSON response
+        import re
+        # Extract JSON array from response
+        json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+        if json_match:
+            suggestions = json.loads(json_match.group())
+            # Ensure we have exactly 3 suggestions
+            suggestions = suggestions[:3]
+        else:
+            # Fallback suggestions if parsing fails
+            suggestions = [
+                "What properties are currently available in the area?",
+                "Can you tell me about the price range of homes?",
+                "What are the features of properties in this neighborhood?"
+            ]
+        
+        response = Response(
+            content=json.dumps({"suggestions": suggestions}),
+            media_type="application/json",
+        )
+        response.set_cookie(key="session_id", value=session_id)
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error generating suggestions: {str(e)}")
+        # Return default suggestions on error
+        default_suggestions = [
+            "What properties are currently available?",
+            "Can you tell me about pricing in the area?",
+            "What amenities do the properties have?"
+        ]
+        response = Response(
+            content=json.dumps({"suggestions": default_suggestions}),
+            media_type="application/json",
+        )
+        response.set_cookie(key="session_id", value=session_id)
+        return response
 
 # Called by the Lambda Adapter to check liveness
 @app.get("/")

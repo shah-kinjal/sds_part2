@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Avatar - KSA</title>
+    <title>Kinjal Shah - Software Engineering Leader</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * {
@@ -12,36 +12,204 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #a8e6cf 0%, #ffd3b6 50%, #ffaaa5 100%);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        :root {
+            --primary: #92400e;
+            --primary-light: #b45309;
+            --secondary: #fbbf24;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: rgba(15, 23, 42, 0.08);
         }
 
-        .chat-container {
-            width: 100%;
+        [data-theme="dark"] {
+            --primary: #d97706;
+            --primary-light: #f59e0b;
+            --secondary: #fcd34d;
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .chat-section-wrapper {
+            background: linear-gradient(135deg, rgba(146, 64, 14, 0.03) 0%, rgba(251, 191, 36, 0.03) 100%);
+            padding: 40px 20px;
+            margin: 0 -20px 30px -20px;
+            border-top: 1px solid rgba(146, 64, 14, 0.1);
+            border-bottom: 1px solid rgba(146, 64, 14, 0.1);
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px var(--shadow);
+            padding: 40px;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .theme-toggle {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+        }
+
+        .profile-section {
+            text-align: center;
+        }
+
+        .profile-name {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .profile-title {
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .profile-tagline {
+            font-size: 16px;
+            color: var(--text-secondary);
             max-width: 800px;
-            height: 90vh;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 0 auto 25px;
+        }
+
+        .contact-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .contact-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .contact-link:hover {
+            color: var(--primary);
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        /* Chat Section */
+        .chat-container {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 4px 12px var(--shadow), 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 40px;
+            height: 700px;
+            border: 1px solid var(--border);
         }
 
         .chat-header {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
-            color: #2d3436;
-            padding: 20px;
-            text-align: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: #ffffff;
+            padding: 25px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 15px;
+            justify-content: space-between;
+            gap: 20px;
         }
 
         .logo-container {
@@ -51,16 +219,10 @@
         }
 
         .logo {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             flex-shrink: 0;
-        }
-
-        .logo-text {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            font-weight: 700;
-            font-size: 14px;
-            fill: #2d3436;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
         }
 
         .header-content {
@@ -68,31 +230,77 @@
             flex-direction: column;
             align-items: center;
             gap: 5px;
+            flex: 1;
         }
 
         .chat-header h1 {
             font-size: 24px;
-            font-weight: 600;
+            font-weight: 700;
             margin: 0;
+            letter-spacing: -0.5px;
         }
 
-        .chat-header p {
-            margin-top: 5px;
-            opacity: 0.8;
-            font-size: 14px;
+        .chat-header .subtitle {
+            font-size: 13px;
+            opacity: 0.95;
+            font-weight: 500;
+        }
+
+        .role-badge {
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
         }
 
         .chat-messages {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            background: #f8f9fa;
+            background: var(--bg-main);
+            min-height: 300px;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
         }
 
         .message {
             margin-bottom: 15px;
             display: flex;
             align-items: flex-start;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.user {
@@ -104,7 +312,8 @@
             padding: 12px 16px;
             border-radius: 18px;
             word-wrap: break-word;
-            line-height: 1.4;
+            line-height: 1.5;
+            font-size: 14px;
         }
 
         .message.user .message-bubble {
@@ -114,164 +323,128 @@
         .message.assistant .message-bubble h1,
         .message.assistant .message-bubble h2,
         .message.assistant .message-bubble h3 {
-            margin-top: 0.5em;
+            margin-top: 0.7em;
             margin-bottom: 0.5em;
-            font-weight: 600;
+            font-weight: 700;
+            color: var(--primary);
         }
 
         .message.assistant .message-bubble h1 {
-            font-size: 1.5em;
+            font-size: 1.4em;
         }
 
         .message.assistant .message-bubble h2 {
-            font-size: 1.3em;
+            font-size: 1.2em;
         }
 
         .message.assistant .message-bubble h3 {
-            font-size: 1.1em;
+            font-size: 1.05em;
         }
 
         .message.assistant .message-bubble p {
-            margin: 0.5em 0;
+            margin: 0.6em 0;
         }
 
         .message.assistant .message-bubble ul,
         .message.assistant .message-bubble ol {
-            margin: 0.5em 0;
-            padding-left: 1.5em;
+            margin: 0.6em 0;
+            padding-left: 1.8em;
         }
 
         .message.assistant .message-bubble li {
-            margin: 0.25em 0;
+            margin: 0.3em 0;
         }
 
         .message.assistant .message-bubble code {
-            background: rgba(136, 216, 163, 0.3);
-            padding: 2px 6px;
-            border-radius: 4px;
+            background: rgba(146, 64, 14, 0.15);
+            padding: 3px 8px;
+            border-radius: 5px;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
-            color: #2d3436;
+            color: var(--primary);
+            font-weight: 500;
         }
 
         .message.assistant .message-bubble pre {
-            background: rgba(136, 216, 163, 0.2);
-            padding: 10px;
-            border-radius: 6px;
+            background: rgba(146, 64, 14, 0.08);
+            padding: 12px 14px;
+            border-radius: 8px;
             overflow-x: auto;
-            margin: 0.5em 0;
-            border-left: 3px solid #88d8a3;
+            margin: 0.6em 0;
+            border-left: 4px solid var(--primary);
         }
 
         .message.assistant .message-bubble pre code {
             background: none;
             padding: 0;
+            color: var(--text-primary);
         }
 
         .message.assistant .message-bubble blockquote {
-            border-left: 3px solid #88d8a3;
-            padding-left: 1em;
-            margin: 0.5em 0;
+            border-left: 4px solid var(--primary);
+            padding-left: 1.2em;
+            margin: 0.6em 0;
             font-style: italic;
-            background: rgba(136, 216, 163, 0.15);
-            padding: 0.5em 1em;
-            border-radius: 4px;
+            background: rgba(146, 64, 14, 0.1);
+            padding: 0.8em 1.2em;
+            border-radius: 6px;
+            color: var(--text-secondary);
         }
 
         .message.assistant .message-bubble a {
-            color: #ff8b94;
-            text-decoration: underline;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        .message.assistant .message-bubble a:hover {
+            border-bottom-color: var(--primary);
         }
 
         .message.assistant .message-bubble strong {
-            font-weight: 600;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         .message.assistant .message-bubble em {
             font-style: italic;
+            color: var(--text-secondary);
         }
 
         .message.assistant .message-bubble table {
             border-collapse: collapse;
-            margin: 0.5em 0;
+            margin: 0.6em 0;
             width: 100%;
+            border: 1px solid rgba(146, 64, 14, 0.2);
         }
 
         .message.assistant .message-bubble th,
         .message.assistant .message-bubble td {
-            border: 1px solid rgba(0, 0, 0, 0.2);
-            padding: 6px 10px;
+            border: 1px solid rgba(146, 64, 14, 0.2);
+            padding: 8px 12px;
             text-align: left;
         }
 
         .message.assistant .message-bubble th {
-            background: rgba(136, 216, 163, 0.3);
-            font-weight: 600;
-            color: #2d3436;
+            background: rgba(146, 64, 14, 0.15);
+            font-weight: 700;
+            color: var(--primary);
         }
 
         .message.assistant .message-bubble {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
-            color: #2d3436;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: var(--text-primary);
             border-bottom-left-radius: 6px;
+            box-shadow: 0 2px 8px rgba(146, 64, 14, 0.1);
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, #ffaaa5 0%, #ff8b94 100%);
-            color: #2d3436;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
             border-bottom-right-radius: 6px;
-        }
-
-        .message-role {
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 4px;
-            opacity: 0.7;
-        }
-
-        .chat-input {
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #e9ecef;
-            display: flex;
-            gap: 12px;
-        }
-
-        .chat-input input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e9ecef;
-            border-radius: 25px;
-            font-size: 16px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-
-        .chat-input input:focus {
-            border-color: #ff8b94;
-        }
-
-        .chat-input button {
-            background: linear-gradient(135deg, #ffaaa5 0%, #ff8b94 100%);
-            color: #2d3436;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(255, 139, 148, 0.4);
-        }
-
-        .chat-input button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 139, 148, 0.6);
-        }
-
-        .chat-input button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
+            box-shadow: 0 2px 8px rgba(146, 64, 14, 0.3);
         }
 
         .typing-indicator {
@@ -279,11 +452,12 @@
             align-items: center;
             gap: 8px;
             padding: 12px 16px;
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
             border-radius: 18px;
             border-bottom-left-radius: 6px;
             max-width: 70%;
             margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(146, 64, 14, 0.1);
         }
 
         .typing-dots {
@@ -294,7 +468,7 @@
         .typing-dots span {
             width: 8px;
             height: 8px;
-            background: #88d8a3;
+            background: var(--primary);
             border-radius: 50%;
             animation: typing 1.4s infinite ease-in-out;
         }
@@ -318,72 +492,646 @@
             }
         }
 
+        .chat-input {
+            padding: 20px 25px;
+            background: white;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .button-group button {
+            white-space: nowrap;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid var(--border);
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+            background: white;
+            color: var(--text-primary);
+        }
+
+        .chat-input input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(146, 64, 14, 0.1);
+        }
+
+        .chat-input button {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(146, 64, 14, 0.3);
+        }
+
+        .chat-input button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(146, 64, 14, 0.4);
+        }
+
+        .chat-input button:active {
+            transform: translateY(0);
+        }
+
+        .chat-input button:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+            opacity: 0.6;
+        }
+
+        .clear-chat-button {
+            background: linear-gradient(135deg, var(--secondary) 0%, #f59e0b 100%) !important;
+            box-shadow: 0 2px 6px rgba(251, 191, 36, 0.3) !important;
+        }
+
+        .clear-chat-button:hover {
+            box-shadow: 0 4px 10px rgba(251, 191, 36, 0.4) !important;
+        }
+
         .error-message {
-            color: #dc3545;
+            color: #dc2626;
             font-size: 14px;
             text-align: center;
-            padding: 10px;
-            background: #f8d7da;
+            padding: 12px;
+            background: #fee2e2;
             border-radius: 8px;
             margin: 10px 0;
+            border-left: 4px solid #dc2626;
+        }
+
+        /* Experience Section */
+        .experience-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px var(--shadow);
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .experience-item {
+            padding: 25px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .experience-item:last-child {
+            border-bottom: none;
+        }
+
+        .experience-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .experience-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .experience-company {
+            font-size: 16px;
+            color: var(--primary);
+            margin-top: 5px;
+        }
+
+        .experience-date {
+            font-size: 14px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .experience-description {
+            color: var(--text-secondary);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .experience-description p {
+            margin-bottom: 10px;
+        }
+
+        .experience-description ul {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        .experience-description li {
+            margin-bottom: 8px;
+        }
+
+        /* Skills Section */
+        .skills-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px var(--shadow);
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .skill-category {
+            background: var(--bg-main);
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .skill-category h3 {
+            font-size: 18px;
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .skill-tag {
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            border: 1px solid var(--border);
+        }
+
+        /* Education Section */
+        .education-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px var(--shadow);
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+
+        .education-item {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .education-item:last-child {
+            border-bottom: none;
+        }
+
+        .education-degree {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .education-school {
+            font-size: 16px;
+            color: var(--primary);
+        }
+
+        /* Certifications Section */
+        .certifications-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px var(--shadow);
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+
+        .cert-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .cert-item {
+            background: var(--bg-main);
+            padding: 15px 20px;
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .profile-name {
+                font-size: 28px;
+            }
+
+            .profile-title {
+                font-size: 18px;
+            }
+
+            .header, .experience-section, 
+            .skills-section, .education-section, .certifications-section {
+                padding: 25px;
+            }
+
+            .section-title {
+                font-size: 24px;
+            }
+
+            .chat-container {
+                border-radius: 12px;
+                height: 600px;
+                max-width: 100%;
+            }
+
+            .chat-header {
+                flex-direction: column;
+                padding: 20px;
+            }
+
+            .chat-header h1 {
+                font-size: 20px;
+            }
+
+            .header-buttons {
+                width: 100%;
+            }
+
+            .clear-chat-button {
+                flex: 1;
+            }
+
+            .logo {
+                width: 45px;
+                height: 45px;
+            }
+
+            .message-bubble {
+                max-width: 85%;
+            }
+
+            .chat-messages {
+                min-height: 200px;
+            }
+
+            .chat-section-wrapper {
+                padding: 30px 15px;
+                margin: 0 -20px 20px -20px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <div class="logo-container">
-                <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Background circle -->
-                    <circle cx="50" cy="50" r="45" fill="#ff8b94" opacity="0.2"/>
-                    <!-- Main circle -->
-                    <circle cx="50" cy="50" r="35" fill="none" stroke="#88d8a3" stroke-width="3"/>
-                    <!-- Inner circles representing digital avatar concept -->
-                    <circle cx="50" cy="50" r="25" fill="none" stroke="#ff8b94" stroke-width="2" stroke-dasharray="5,5"/>
-                    <circle cx="50" cy="50" r="15" fill="#88d8a3" opacity="0.6"/>
-                    <!-- KSA Text -->
-                    <text x="50" y="55" class="logo-text" text-anchor="middle" dominant-baseline="middle">KSA</text>
-                    <!-- Connection lines -->
-                    <line x1="50" y1="15" x2="50" y2="35" stroke="#88d8a3" stroke-width="2"/>
-                    <line x1="50" y1="65" x2="50" y2="85" stroke="#ff8b94" stroke-width="2"/>
-                    <line x1="15" y1="50" x2="35" y2="50" stroke="#88d8a3" stroke-width="2"/>
-                    <line x1="65" y1="50" x2="85" y2="50" stroke="#ff8b94" stroke-width="2"/>
-                    <!-- Small nodes -->
-                    <circle cx="50" cy="15" r="4" fill="#88d8a3"/>
-                    <circle cx="50" cy="85" r="4" fill="#ff8b94"/>
-                    <circle cx="15" cy="50" r="4" fill="#88d8a3"/>
-                    <circle cx="85" cy="50" r="4" fill="#ff8b94"/>
-                </svg>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-top">
+                <div></div>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Dark Mode</span>
+                </button>
             </div>
-            <div class="header-content">
-                <h1 id="chat-title">KSA Digital Avatar</h1>
-                <p>Ask me anything about my professional background and experience</p>
-            </div>
-            <button class="clear-chat-button" id="clear-chat-button">Clear Chat</button>
-        </div>
-        <div class="chat-messages" id="chat-messages">
-            <div class="typing-indicator" id="typing-indicator">
-                <div class="typing-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+            
+            <div class="profile-section">
+                <h1 class="profile-name">Kinjal Shah</h1>
+                <div class="profile-title">Software Engineering Leader</div>
+                <p class="profile-tagline">
+                    Engineering Leadership | Softwere Engineering | AI Engineering | Scaling | Cybersecurity
+                </p>
+                
+                <div class="contact-links">
+                    <a href="tel:510-468-2232" class="contact-link">📞 510-468-2232</a>
+                    <a href="mailto:shahkinjal@gmail.com" class="contact-link">✉️ shahkinjal@gmail.com</a>
+                    <span class="contact-link">📍 San Francisco Bay Area</span>
                 </div>
-                <span>Thinking...</span>
+
+                <div class="action-buttons">
+                    <a href="https://drive.google.com/file/d/1SJVwMo4WwaSK7-NpdfxM0R9rL_aoNQak/view?usp=sharing" target="_blank" class="btn btn-primary">
+                        📄 Download Resume
+                    </a>
+                    <a href="https://www.linkedin.com/in/shahkinjal/" target="_blank" class="btn btn-primary"">
+                        💼 LinkedIn Profile
+                    </a>
+                    <a href="https://github.com/shah-kinjal" target="_blank" class="btn btn-primary"">
+                        💻 GitHub Repository
+                    </a>
+                </div>
             </div>
         </div>
-        <div class="chat-input">
-            <input type="text" id="message-input" placeholder="Type your message..." maxlength="500">
-            <button id="send-button">Send</button>
+
+        <!-- Chat Section -->
+        <div class="chat-section-wrapper">
+            <div class="chat-container">
+            <div class="chat-header">
+                <div class="logo-container">
+                    <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Background circle -->
+                        <circle cx="50" cy="50" r="45" fill="#fbbf24" opacity="0.2"/>
+                        <!-- Main circle -->
+                        <circle cx="50" cy="50" r="35" fill="none" stroke="#ffffff" stroke-width="3"/>
+                        <!-- Inner circles representing digital avatar concept -->
+                        <circle cx="50" cy="50" r="25" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="5,5"/>
+                        <circle cx="50" cy="50" r="15" fill="#ffffff" opacity="0.8"/>
+                        <!-- KSA Text -->
+                        <text x="50" y="55" style="font-family: system-ui; font-weight: 700; font-size: 14px; fill: #92400e;" text-anchor="middle" dominant-baseline="middle">KSA</text>
+                        <!-- Connection lines -->
+                        <line x1="50" y1="15" x2="50" y2="35" stroke="#ffffff" stroke-width="2"/>
+                        <line x1="50" y1="65" x2="50" y2="85" stroke="#ffffff" stroke-width="2"/>
+                        <line x1="15" y1="50" x2="35" y2="50" stroke="#ffffff" stroke-width="2"/>
+                        <line x1="65" y1="50" x2="85" y2="50" stroke="#ffffff" stroke-width="2"/>
+                        <!-- Small nodes -->
+                        <circle cx="50" cy="15" r="4" fill="#ffffff"/>
+                        <circle cx="50" cy="85" r="4" fill="#ffffff"/>
+                        <circle cx="15" cy="50" r="4" fill="#ffffff"/>
+                        <circle cx="85" cy="50" r="4" fill="#ffffff"/>
+                    </svg>
+                </div>
+                <div class="header-content">
+                    <h1 id="chat-title">KSA Digital Avatar</h1>
+                    <div class="subtitle">Kinjal Shah's Professional AI Assistant</div>
+                    <div class="role-badge">Software Engineering Leader | AI & Cloud Expert</div>
+                </div>
+                <div class="header-buttons">
+                    <button class="clear-chat-button" id="clear-chat-button-header">Clear</button>
+                </div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="typing-indicator" id="typing-indicator">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <span style="color: #92400e; font-weight: 500;">Thinking...</span>
+                </div>
+            </div>
+            <div class="chat-input">
+                <div class="input-wrapper">
+                    <input type="text" id="message-input" placeholder="Ask me about my experience, skills, or projects..." maxlength="500">
+                </div>
+                <div class="button-group">
+                    <button id="send-button">Send</button>
+                    <button class="clear-chat-button" id="clear-chat-button">Clear</button>
+                </div>
+            </div>
+            </div>
         </div>
+        <!-- Experience Section -->
+        <div class="experience-section">
+            <h2 class="section-title">Professional Experience</h2>
+            
+            <div class="experience-item">
+                <div class="experience-header">
+                    <div>
+                        <div class="experience-title">Fractional Engineering Leader</div>
+                        <div class="experience-company">MKFS Tech</div>
+                    </div>
+                    <div class="experience-date">August 2024 - Present</div>
+                </div>
+                <div class="experience-description">
+                    <p>Partnering with Rosendin Electric in their Digital Transformation journey</p>
+                    <ul>
+                        <li>Spearheading the transition to a touchless, AI-powered invoice processing system for Rosendin Electric. Boosting invoice processing automation from 20% to 65% within nine months</li>
+                        <li>Leading a team of 5 engineers. Working closely with business users to ensure requirements are captured and implemented to end users' satisfaction</li>
+                        <li>Implemented an AI-powered SMS service for recruiting and HR, improving candidate experience and turnaround time by 50%</li>
+                        <li>Partnered with Rosendin Electric in their Digital Transformation journey, leading a team of 5 engineers to enhance the data analytics and transition all reporting to Databricks data lakehouse architecture and Power BI</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="experience-item">
+                <div class="experience-header">
+                    <div>
+                        <div class="experience-title">Senior Director of Engineering</div>
+                        <div class="experience-company">Agero, Inc. - Swoop Platform</div>
+                    </div>
+                    <div class="experience-date">March 2019 - June 2024</div>
+                </div>
+                <div class="experience-description">
+                    <p>Promoted from Director of Engineering to Senior Director of Engineering, led multiple geographically distributed cross-functional teams focused on developing, enhancing, and maintaining Agero's Swoop roadside assistance platform.</p>
+                    <ul>
+                        <li>Grew the engineering team from 10 engineers to a cross-functional organization of over 50 engineers, supporting a business worth over $1B, which helped scale the product and platform to support 200%+ YoY client and volume growth</li>
+                        <li>Led the team in the development of a resilient, scalable, and secure roadside assistance platform, transforming it to a fault-tolerant, auto-scaling solution processing over 1M transactions per week with 99.98% uptime</li>
+                        <li>Generated substantial cost savings through platform optimizations, averaging over 35% annually in hardware and SaaS expenses</li>
+                        <li>Led the revamp of the Swoop mobile app to make it feature-rich, scalable, and secure, leading to payment acceptance on the app and a 60% increase in user adoption</li>
+                        <li>Established transparent, metrics-driven processes that continually improve, resulting in a 40% boost in developer happiness and faster feature release times</li>
+                        <li>Orchestrated the development of product and engineering roadmaps, ensuring a harmonious balance between delivering new features and managing technical debt</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="experience-item">
+                <div class="experience-header">
+                    <div>
+                        <div class="experience-title">Head of Engineering</div>
+                        <div class="experience-company">Quisk, Inc.</div>
+                    </div>
+                    <div class="experience-date">May 2014 - October 2018</div>
+                </div>
+                <div class="experience-description">
+                    <p>Promoted from Engineering Manager to Head of Engineering. Oversaw the development and launch of a cloud-based, secure, omnichannel mobile payment processing platform for the masses without access to credit cards. Oversaw the launch of the platform in 3 countries.</p>
+                    <ul>
+                        <li>Transformed a fragmented on-prem mobile payment application into a robust cloud-based platform, achieving 99.99% uptime and the capacity to handle over 10 million transactions per day</li>
+                        <li>Hired, coached, and mentored team members at all levels, fostering talent development and creating a strong, cohesive engineering team that grew from 11 to 45 members</li>
+                        <li>Organized the engineering team into multiple pillars, which enabled us to release new features quickly and enhanced our ability to serve both US and international markets simultaneously</li>
+                        <li>Partnered effectively with cross-functional teams like product management, customer service, and business to prioritize features and engineering projects, resulting in a 40% reduction in customer complaints</li>
+                        <li>Provided training opportunities for engineers and managers to support their career growth through both technical and management tracks</li>
+                        <li>Forged offshore teams for mobile and web app development and client integration projects, allowing the core engineering team to concentrate on building platform features</li>
+                    </ul>
+                </div>
+            </div>
+
+            
+
+        <!-- Skills Section -->
+        <div class="skills-section">
+            <h2 class="section-title">Technical Skills & Expertise</h2>
+            
+            <div class="skills-grid">
+                <div class="skill-category">
+                    <h3>☁️ Cloud & Infrastructure</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">AWS</span>
+                        <span class="skill-tag">GCP</span>
+                        <span class="skill-tag">Cloud Migration</span>
+                        <span class="skill-tag">Multi-Tenant Systems</span>
+                        <span class="skill-tag">Redshift Serverless</span>
+                        <span class="skill-tag">Cloud-Native Design</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>🤖 AI & Machine Learning</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">AI Engineering</span>
+                        <span class="skill-tag">Agentic AI</span>
+                        <span class="skill-tag">Generative AI</span>
+                        <span class="skill-tag">Prompt Engineering</span>
+                        <span class="skill-tag">OpenAI Agents SDK</span>
+                        <span class="skill-tag">LangChain</span>
+                        <span class="skill-tag">MCP</span>
+                        <span class="skill-tag">Gradio</span>
+                        <span class="skill-tag">HuggingFace</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>⚙️ DevOps & CI/CD</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Jenkins</span>
+                        <span class="skill-tag">Circle CI</span>
+                        <span class="skill-tag">GitHub</span>
+                        <span class="skill-tag">GitLab</span>
+                        <span class="skill-tag">Docker</span>
+                        <span class="skill-tag">Kubernetes</span>
+                        <span class="skill-tag">Monitoring</span>
+                        <span class="skill-tag">Developer Tooling</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>💻 Technologies</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Microservices</span>
+                        <span class="skill-tag">GraphQL</span>
+                        <span class="skill-tag">REST APIs</span>
+                        <span class="skill-tag">Kafka</span>
+                        <span class="skill-tag">Python</span>
+                        <span class="skill-tag">Java</span>
+                        <span class="skill-tag">Spring Boot</span>
+                        <span class="skill-tag">Elasticsearch</span>
+                        <span class="skill-tag">Blockchain</span>
+                        <span class="skill-tag">Couchbase</span>
+                        <span class="skill-tag">Apigee</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>🔒 Security & Compliance</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">PCI Compliance</span>
+                        <span class="skill-tag">GDPR</span>
+                        <span class="skill-tag">ISO27001</span>
+                        <span class="skill-tag">CCPA</span>
+                        <span class="skill-tag">HashiCorp Vault</span>
+                        <span class="skill-tag">IAM</span>
+                        <span class="skill-tag">Secure Coding</span>
+                        <span class="skill-tag">Data Security</span>
+                    </div>
+                </div>
+
+                <div class="skill-category">
+                    <h3>📊 Leadership & Management</h3>
+                    <div class="skill-tags">
+                        <span class="skill-tag">Engineering Leadership</span>
+                        <span class="skill-tag">Product Engineering</span>
+                        <span class="skill-tag">Agile</span>
+                        <span class="skill-tag">Scrum</span>
+                        <span class="skill-tag">Kanban</span>
+                        <span class="skill-tag">Roadmap Planning</span>
+                        <span class="skill-tag">Budget Planning</span>
+                        <span class="skill-tag">Team Development</span>
+                        <span class="skill-tag">Cross-functional Collaboration</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Education Section -->
+        <div class="education-section">
+            <h2 class="section-title">Education</h2>
+            
+            <div class="education-item">
+                <div class="education-degree">Master of Business Administration (MBA) - General Management</div>
+                <div class="education-school">Santa Clara University - Leavey School of Business</div>
+            </div>
+
+            <div class="education-item">
+                <div class="education-degree">Master of Engineering (MEng), Software Engineering</div>
+                <div class="education-school">San José State University</div>
+            </div>
+
+            <div class="education-item">
+                <div class="education-degree">Bachelor of Science (BS), Computer Science</div>
+                <div class="education-school">San José State University</div>
+            </div>
+        </div>
+
+        <!-- Certifications Section -->
+        <div class="certifications-section">
+            <h2 class="section-title">Certifications & Awards</h2>
+            
+            <div class="cert-grid">
+                <div class="cert-item">🎓 Generative AI Fundamentals - Databricks</div>
+                <div class="cert-item">🤖 The Complete Agentic AI Engineering Course - Udemy</div>
+                <div class="cert-item">🤖 Agentic AI Bootcamp - SuperDataScience</div>
+                <div class="cert-item">📋 Certified Scrum Master</div>
+                <div class="cert-item">☕ Sun Certified Java Programmer</div>
+                <div class="cert-item">🏆 HP CIO Special Recognition Award</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+       
     </div>
 
     <script>
         // CONFIGURATION - Edit this name to customize for different jobseekers
         const JOBSEEKER_NAME = "Kinjal Shah";
+        const JOBSEEKER_TITLE = "Software Engineering Leader";
+        const JOBSEEKER_BIO = "20+ years of experience scaling high-impact teams and delivering robust, secure, cloud-native platforms. Expert in AI Engineering, Cloud Architecture, FinTech, and team leadership.";
         
         // Update page title with jobseeker name
-        document.getElementById('chat-title').textContent = `${JOBSEEKER_NAME}'s KSA Digital Avatar`;
-        document.title = `KSA Digital Avatar - ${JOBSEEKER_NAME}`;
+        document.getElementById('chat-title').textContent = `${JOBSEEKER_NAME}'s Digital Avatar`;
+        document.title = `Digital Avatar - ${JOBSEEKER_NAME}`;
 
         // DOM elements
         const messagesContainer = document.getElementById('chat-messages');
@@ -396,6 +1144,40 @@
             breaks: true,
             gfm: true
         });
+
+        // Theme toggle function
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            
+            // Update button text and icon
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+            if (newTheme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light Mode';
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark Mode';
+            }
+            
+            // Save preference
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+            if (savedTheme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light Mode';
+            }
+        }
 
         // Initialize chat
         document.addEventListener('DOMContentLoaded', () => {
@@ -411,6 +1193,24 @@
                     sendMessage();
                 }
             });
+            
+            const clearButton = document.getElementById('clear-chat-button');
+            if (clearButton) {
+                clearButton.addEventListener('click', clearChat);
+            }
+            
+            const clearButtonHeader = document.getElementById('clear-chat-button-header');
+            if (clearButtonHeader) {
+                clearButtonHeader.addEventListener('click', clearChat);
+            }
+        }
+
+        function clearChat() {
+            if (confirm('Are you sure you want to clear the chat history?')) {
+                messagesContainer.innerHTML = '';
+                messageInput.value = '';
+                messageInput.focus();
+            }
         }
 
         async function loadMessages() {

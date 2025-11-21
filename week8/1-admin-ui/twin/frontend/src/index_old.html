@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Realtor</title>
+    <title>Digital Avatar - KSA</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * {
@@ -14,33 +14,35 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #a8e6cf 0%, #ffd3b6 50%, #ffaaa5 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
 
         .chat-container {
             width: 100%;
-            max-width: 800px;
+            max-width: 900px;
             height: 90vh;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
         .chat-header {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
-            color: #2d3436;
-            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            padding: 25px;
+            text-align: center;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 15px;
+            gap: 20px;
         }
 
         .logo-container {
@@ -50,16 +52,10 @@
         }
 
         .logo {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             flex-shrink: 0;
-        }
-
-        .logo-text {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            font-weight: 700;
-            font-size: 14px;
-            fill: #2d3436;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
         }
 
         .header-content {
@@ -68,51 +64,119 @@
             align-items: center;
             gap: 5px;
             flex: 1;
-            text-align: center;
         }
 
         .chat-header h1 {
-            font-size: 24px;
-            font-weight: 600;
+            font-size: 28px;
+            font-weight: 700;
             margin: 0;
+            letter-spacing: -0.5px;
         }
 
-        .chat-header p {
-            margin-top: 5px;
-            opacity: 0.8;
-            font-size: 14px;
+        .chat-header .subtitle {
+            font-size: 13px;
+            opacity: 0.95;
+            font-weight: 500;
+        }
+
+        .info-section {
+            background: transparent;
+            border-radius: 0;
+            padding: 12px 25px;
+            margin: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            box-shadow: none;
+        }
+
+        .info-item {
+            padding: 10px 12px;
+            background: linear-gradient(135deg, #f0f1ff 0%, #ede9fe 100%);
+            border-radius: 6px;
+            border-left: 2px solid #667eea;
+        }
+
+        .info-item-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 3px;
+        }
+
+        .info-item-value {
+            font-size: 12px;
+            color: #2d3748;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+
+        .info-item-value a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .info-item-value a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .info-section {
+                grid-template-columns: 1fr;
+                margin: 0 15px 20px 15px;
+                padding: 15px;
+            }
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
         }
 
         .clear-chat-button {
-            background: rgba(255, 255, 255, 0.3);
-            color: #2d3436;
-            border: 2px solid rgba(45, 52, 54, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
             padding: 8px 16px;
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
-            flex-shrink: 0;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
         }
 
         .clear-chat-button:hover {
-            background: rgba(255, 255, 255, 0.5);
-            border-color: rgba(45, 52, 54, 0.5);
-            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
         .chat-messages {
             flex: 1;
-            padding: 20px;
+            padding: 25px;
             overflow-y: auto;
-            background: #f8f9fa;
+            background: linear-gradient(to bottom, #f8f9ff, #f0f1ff);
         }
 
         .message {
-            margin-bottom: 15px;
+            margin-bottom: 16px;
             display: flex;
             align-items: flex-start;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.user {
@@ -121,10 +185,11 @@
 
         .message-bubble {
             max-width: 70%;
-            padding: 12px 16px;
+            padding: 14px 18px;
             border-radius: 18px;
             word-wrap: break-word;
-            line-height: 1.4;
+            line-height: 1.5;
+            font-size: 15px;
         }
 
         .message.user .message-bubble {
@@ -134,187 +199,237 @@
         .message.assistant .message-bubble h1,
         .message.assistant .message-bubble h2,
         .message.assistant .message-bubble h3 {
-            margin-top: 0.5em;
+            margin-top: 0.7em;
             margin-bottom: 0.5em;
-            font-weight: 600;
+            font-weight: 700;
+            color: #667eea;
         }
 
         .message.assistant .message-bubble h1 {
-            font-size: 1.5em;
+            font-size: 1.4em;
         }
 
         .message.assistant .message-bubble h2 {
-            font-size: 1.3em;
+            font-size: 1.2em;
         }
 
         .message.assistant .message-bubble h3 {
-            font-size: 1.1em;
+            font-size: 1.05em;
         }
 
         .message.assistant .message-bubble p {
-            margin: 0.5em 0;
+            margin: 0.6em 0;
         }
 
         .message.assistant .message-bubble ul,
         .message.assistant .message-bubble ol {
-            margin: 0.5em 0;
-            padding-left: 1.5em;
+            margin: 0.6em 0;
+            padding-left: 1.8em;
         }
 
         .message.assistant .message-bubble li {
-            margin: 0.25em 0;
+            margin: 0.3em 0;
         }
 
         .message.assistant .message-bubble code {
-            background: rgba(136, 216, 163, 0.3);
-            padding: 2px 6px;
-            border-radius: 4px;
+            background: rgba(102, 126, 234, 0.15);
+            padding: 3px 8px;
+            border-radius: 5px;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
-            color: #2d3436;
+            color: #667eea;
+            font-weight: 500;
         }
 
         .message.assistant .message-bubble pre {
-            background: rgba(136, 216, 163, 0.2);
-            padding: 10px;
-            border-radius: 6px;
+            background: rgba(102, 126, 234, 0.08);
+            padding: 12px 14px;
+            border-radius: 8px;
             overflow-x: auto;
-            margin: 0.5em 0;
-            border-left: 3px solid #88d8a3;
+            margin: 0.6em 0;
+            border-left: 4px solid #667eea;
         }
 
         .message.assistant .message-bubble pre code {
             background: none;
             padding: 0;
+            color: #2d3748;
         }
 
         .message.assistant .message-bubble blockquote {
-            border-left: 3px solid #88d8a3;
-            padding-left: 1em;
-            margin: 0.5em 0;
+            border-left: 4px solid #667eea;
+            padding-left: 1.2em;
+            margin: 0.6em 0;
             font-style: italic;
-            background: rgba(136, 216, 163, 0.15);
-            padding: 0.5em 1em;
-            border-radius: 4px;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 0.8em 1.2em;
+            border-radius: 6px;
+            color: #4a5568;
         }
 
         .message.assistant .message-bubble a {
-            color: #ff8b94;
-            text-decoration: underline;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        .message.assistant .message-bubble a:hover {
+            border-bottom-color: #667eea;
         }
 
         .message.assistant .message-bubble strong {
-            font-weight: 600;
+            font-weight: 700;
+            color: #2d3748;
         }
 
         .message.assistant .message-bubble em {
             font-style: italic;
+            color: #4a5568;
         }
 
         .message.assistant .message-bubble table {
             border-collapse: collapse;
-            margin: 0.5em 0;
+            margin: 0.6em 0;
             width: 100%;
+            border: 1px solid rgba(102, 126, 234, 0.2);
         }
 
         .message.assistant .message-bubble th,
         .message.assistant .message-bubble td {
-            border: 1px solid rgba(0, 0, 0, 0.2);
-            padding: 6px 10px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            padding: 8px 12px;
             text-align: left;
         }
 
         .message.assistant .message-bubble th {
-            background: rgba(136, 216, 163, 0.3);
-            font-weight: 600;
-            color: #2d3436;
+            background: rgba(102, 126, 234, 0.15);
+            font-weight: 700;
+            color: #667eea;
         }
 
         .message.assistant .message-bubble {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
-            color: #2d3436;
+            background: linear-gradient(135deg, #f0f1ff 0%, #ede9fe 100%);
+            color: #2d3748;
             border-bottom-left-radius: 6px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, #ffaaa5 0%, #ff8b94 100%);
-            color: #2d3436;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
             border-bottom-right-radius: 6px;
-        }
-
-        .message-role {
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 4px;
-            opacity: 0.7;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
         .chat-input {
-            padding: 20px;
+            padding: 20px 25px;
             background: white;
-            border-top: 1px solid #e9ecef;
+            border-top: 1px solid #e2e8f0;
             display: flex;
             gap: 12px;
         }
 
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .button-group button {
+            white-space: nowrap;
+        }
+
         .chat-input input {
             flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e9ecef;
+            padding: 12px 18px;
+            border: 2px solid #e2e8f0;
             border-radius: 25px;
-            font-size: 16px;
+            font-size: 15px;
             outline: none;
-            transition: border-color 0.3s;
+            transition: all 0.3s;
+            background: #f8f9ff;
         }
 
         .chat-input input:focus {
-            border-color: #ff8b94;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .chat-input button {
-            background: linear-gradient(135deg, #ffaaa5 0%, #ff8b94 100%);
-            color: #2d3436;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 12px 28px;
             border-radius: 25px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(255, 139, 148, 0.4);
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
 
         .chat-input button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 139, 148, 0.6);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .chat-input button:active {
+            transform: translateY(0);
         }
 
         .chat-input button:disabled {
-            background: #ccc;
+            background: #cbd5e0;
             cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #clear-chat-button {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            padding: 10px 20px;
+            font-size: 13px;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+
+        #clear-chat-button:hover {
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
         }
 
         .typing-indicator {
             display: none;
             align-items: center;
-            gap: 8px;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            gap: 10px;
+            padding: 14px 18px;
+            background: linear-gradient(135deg, #f0f1ff 0%, #ede9fe 100%);
             border-radius: 18px;
             border-bottom-left-radius: 6px;
             max-width: 70%;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
         }
 
         .typing-dots {
             display: flex;
-            gap: 4px;
+            gap: 5px;
         }
 
         .typing-dots span {
             width: 8px;
             height: 8px;
-            background: #88d8a3;
+            background: #667eea;
             border-radius: 50%;
             animation: typing 1.4s infinite ease-in-out;
         }
@@ -339,67 +454,46 @@
         }
 
         .error-message {
-            color: #dc3545;
+            color: #c53030;
             font-size: 14px;
             text-align: center;
-            padding: 10px;
-            background: #f8d7da;
+            padding: 12px;
+            background: #fed7d7;
             border-radius: 8px;
             margin: 10px 0;
+            border-left: 4px solid #c53030;
         }
 
-        .suggestions-container {
-            padding: 0 20px 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: white;
-            border-top: 1px solid #e9ecef;
-        }
+        @media (max-width: 768px) {
+            .chat-container {
+                border-radius: 12px;
+            }
 
-        .suggestions-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #6c757d;
-            margin-bottom: 4px;
-        }
+            .chat-header {
+                flex-direction: column;
+                padding: 20px;
+            }
 
-        .suggestions-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+            .header-buttons {
+                width: 100%;
+            }
 
-        .suggestion-button {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
-            color: #2d3436;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 15px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 2px 8px rgba(136, 216, 163, 0.3);
-            flex: 1 1 auto;
-            min-width: 150px;
-            text-align: left;
-        }
+            .clear-chat-button {
+                flex: 1;
+            }
 
-        .suggestion-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(136, 216, 163, 0.5);
-            background: linear-gradient(135deg, #88d8a3 0%, #a8e6cf 100%);
-        }
+            .chat-header h1 {
+                font-size: 24px;
+            }
 
-        .suggestion-button:active {
-            transform: translateY(0);
-        }
+            .message-bubble {
+                max-width: 85%;
+            }
 
-        .suggestions-loading {
-            font-size: 12px;
-            color: #6c757d;
-            font-style: italic;
+            .logo {
+                width: 60px;
+                height: 60px;
+            }
         }
     </style>
 </head>
@@ -408,25 +502,60 @@
         <div class="chat-header">
             <div class="logo-container">
                 <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <!-- House shape -->
-                    <rect x="30" y="50" width="40" height="35" fill="#88d8a3" opacity="0.8"/>
-                    <!-- Roof triangle -->
-                    <path d="M 20 50 L 50 25 L 80 50 Z" fill="#ff8b94" opacity="0.9"/>
-                    <!-- Door -->
-                    <rect x="42" y="65" width="16" height="20" fill="#2d3436" opacity="0.7"/>
-                    <!-- Window left -->
-                    <rect x="33" y="55" width="10" height="10" fill="#a8e6cf" opacity="0.9"/>
-                    <!-- Window right -->
-                    <rect x="57" y="55" width="10" height="10" fill="#a8e6cf" opacity="0.9"/>
-                    <!-- Door handle -->
-                    <circle cx="55" cy="75" r="1.5" fill="#ff8b94"/>
+                    <!-- Background circle -->
+                    <circle cx="50" cy="50" r="45" fill="#f093fb" opacity="0.2"/>
+                    <!-- Main circle -->
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#ffffff" stroke-width="3"/>
+                    <!-- Inner circles representing digital avatar concept -->
+                    <circle cx="50" cy="50" r="25" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="5,5"/>
+                    <circle cx="50" cy="50" r="15" fill="#ffffff" opacity="0.8"/>
+                    <!-- KSA Text -->
+                    <text x="50" y="55" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; font-weight: 700; font-size: 14px; fill: #667eea;" text-anchor="middle" dominant-baseline="middle">KSA</text>
+                    <!-- Connection lines -->
+                    <line x1="50" y1="15" x2="50" y2="35" stroke="#ffffff" stroke-width="2"/>
+                    <line x1="50" y1="65" x2="50" y2="85" stroke="#ffffff" stroke-width="2"/>
+                    <line x1="15" y1="50" x2="35" y2="50" stroke="#ffffff" stroke-width="2"/>
+                    <line x1="65" y1="50" x2="85" y2="50" stroke="#ffffff" stroke-width="2"/>
+                    <!-- Small nodes -->
+                    <circle cx="50" cy="15" r="4" fill="#ffffff"/>
+                    <circle cx="50" cy="85" r="4" fill="#ffffff"/>
+                    <circle cx="15" cy="50" r="4" fill="#ffffff"/>
+                    <circle cx="85" cy="50" r="4" fill="#ffffff"/>
                 </svg>
             </div>
             <div class="header-content">
-                <h1 id="chat-title">Virtual Realtor</h1>
-                <p>Ask me anything about properties for sale</p>
+                <h1 id="chat-title">KSA Digital Avatar</h1>
+                <div class="subtitle">Kinjal Shah's Professional AI Assistant</div>
+                <div class="role-badge">Software Engineering Leader | AI & Cloud Expert</div>
             </div>
-            <button class="clear-chat-button" id="clear-chat-button">Clear Chat</button>
+            <div class="header-buttons">
+                <button class="clear-chat-button" id="clear-chat-button">Clear Chat</button>
+            </div>
+        <div class="info-section">
+            <div class="info-item">
+                <div class="info-item-label">📍 Location</div>
+                <div class="info-item-value">San Francisco Bay Area</div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-label">💼 Experience</div>
+                <div class="info-item-value">20+ Years</div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-label">🎯 Current Role</div>
+                <div class="info-item-value">Fractional Eng Leader</div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-label">🏢 Company</div>
+                <div class="info-item-value">MKFS Tech</div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-label">🚀 Key Client</div>
+                <div class="info-item-value">Rosendin Electric</div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-label">🎓 Education</div>
+                <div class="info-item-value">MBA, MS Software Eng</div>
+            </div>
         </div>
         <div class="chat-messages" id="chat-messages">
             <div class="typing-indicator" id="typing-indicator">
@@ -435,32 +564,35 @@
                     <span></span>
                     <span></span>
                 </div>
-                <span>Thinking...</span>
+                <span style="color: #667eea; font-weight: 500;">Thinking...</span>
             </div>
         </div>
-        <div class="suggestions-container" id="suggestions-container" style="display: none;">
-            <div class="suggestions-label">💡 Suggested questions:</div>
-            <div class="suggestions-buttons" id="suggestions-buttons"></div>
-        </div>
         <div class="chat-input">
-            <input type="text" id="message-input" placeholder="Ask about properties, prices, locations..." maxlength="500">
-            <button id="send-button">Send</button>
+            <div class="input-wrapper">
+                <input type="text" id="message-input" placeholder="Ask me about my experience, skills, or projects..." maxlength="500">
+            </div>
+            <div class="button-group">
+                <button id="send-button">Send</button>
+                <button class="clear-chat-button" id="clear-chat-button">Clear</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Update page title
-        document.getElementById('chat-title').textContent = 'Virtual Realtor';
-        document.title = 'Virtual Realtor - Property Assistant';
+        // CONFIGURATION - Edit this name to customize for different jobseekers
+        const JOBSEEKER_NAME = "Kinjal Shah";
+        const JOBSEEKER_TITLE = "Software Engineering Leader";
+        const JOBSEEKER_BIO = "20+ years of experience scaling high-impact teams and delivering robust, secure, cloud-native platforms. Expert in AI Engineering, Cloud Architecture, FinTech, and team leadership.";
+        
+        // Update page title with jobseeker name
+        document.getElementById('chat-title').textContent = `${JOBSEEKER_NAME}'s KSA Digital Avatar`;
+        document.title = `KSA Digital Avatar - ${JOBSEEKER_NAME}`;
 
         // DOM elements
         const messagesContainer = document.getElementById('chat-messages');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator');
-        const clearChatButton = document.getElementById('clear-chat-button');
-        const suggestionsContainer = document.getElementById('suggestions-container');
-        const suggestionsButtons = document.getElementById('suggestions-buttons');
 
         // Configure marked.js for markdown rendering
         marked.setOptions({
@@ -482,26 +614,18 @@
                     sendMessage();
                 }
             });
-            clearChatButton.addEventListener('click', clearChat);
+            
+            const clearButton = document.getElementById('clear-chat-button');
+            if (clearButton) {
+                clearButton.addEventListener('click', clearChat);
+            }
         }
 
-        async function clearChat() {
-            if (!confirm('Are you sure you want to clear the chat history?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'DELETE'
-                });
-                
-                if (!response.ok) throw new Error('Failed to clear chat');
-                
+        function clearChat() {
+            if (confirm('Are you sure you want to clear the chat history?')) {
                 messagesContainer.innerHTML = '';
-                scrollToBottom();
-            } catch (error) {
-                console.error('Error clearing chat:', error);
-                showError('Failed to clear chat. Please try again.');
+                messageInput.value = '';
+                messageInput.focus();
             }
         }
 
@@ -672,68 +796,6 @@
         function scrollToBottom() {
             messagesContainer.scrollTop = messagesContainer.scrollTop + 1000;
         }
-
-        // Suggestions functionality
-        async function loadSuggestions() {
-            try {
-                const response = await fetch('/api/suggestions');
-                if (!response.ok) throw new Error('Failed to load suggestions');
-                
-                const data = await response.json();
-                displaySuggestions(data.suggestions);
-            } catch (error) {
-                console.error('Error loading suggestions:', error);
-                // Don't show error to user, just hide suggestions
-                suggestionsContainer.style.display = 'none';
-            }
-        }
-
-        function displaySuggestions(suggestions) {
-            suggestionsButtons.innerHTML = '';
-            
-            if (!suggestions || suggestions.length === 0) {
-                suggestionsContainer.style.display = 'none';
-                return;
-            }
-
-            suggestions.forEach(suggestion => {
-                const button = document.createElement('button');
-                button.className = 'suggestion-button';
-                button.textContent = suggestion;
-                button.addEventListener('click', () => handleSuggestionClick(suggestion));
-                suggestionsButtons.appendChild(button);
-            });
-
-            suggestionsContainer.style.display = 'block';
-        }
-
-        function handleSuggestionClick(suggestion) {
-            messageInput.value = suggestion;
-            messageInput.focus();
-            // Optionally, automatically send the message
-            sendMessage();
-        }
-
-        function hideSuggestions() {
-            suggestionsContainer.style.display = 'none';
-        }
-
-        // Load suggestions after messages are loaded and after each assistant response
-        const originalLoadMessages = loadMessages;
-        loadMessages = async function() {
-            await originalLoadMessages();
-            // Load suggestions after initial messages
-            setTimeout(() => loadSuggestions(), 500);
-        };
-
-        // Override sendMessage to refresh suggestions after response
-        const originalSendMessage = sendMessage;
-        sendMessage = async function() {
-            hideSuggestions(); // Hide while sending
-            await originalSendMessage();
-            // Load new suggestions after response completes
-            setTimeout(() => loadSuggestions(), 1000);
-        };
     </script>
 </body>
 </html>

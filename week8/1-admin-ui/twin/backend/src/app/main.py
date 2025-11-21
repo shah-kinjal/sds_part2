@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands import Agent, tool
 from strands.models import BedrockModel
+from strands.models.openai import OpenAIModel
 from strands.session.s3_session_manager import S3SessionManager
 from strands_tools import retrieve
 import boto3
@@ -14,7 +15,7 @@ import uuid
 import uvicorn
 from questions import Question, QuestionManager, Visitor
 
-name="Kinjal Shah"
+name="Kinjal"
 # Re-use boto session across invocations
 boto_session = boto3.Session()
 state_bucket_name = os.environ.get("STATE_BUCKET", "")
@@ -31,6 +32,16 @@ model_id = os.environ.get("MODEL_ID", "")
 bedrock_model = BedrockModel(
     model_id=model_id,
     # Add Guardrails here
+)
+openai_model = OpenAIModel(
+    client_args={
+        "api_key": os.environ.get("OPENAI_API_KEY", ""),
+    },
+    model_id=os.environ.get("OPENAI_MODEL_ID", "gpt-4o"),
+    params={
+        "max_tokens": 1000,
+        "temperature": 0.7, 
+    }
 )
 current_agent: Agent | None = None
 conversation_manager = SlidingWindowConversationManager(
@@ -124,12 +135,89 @@ async def chat(chat_request: ChatRequest, request: Request):
 
 async def generate(agent: Agent, session_id: str, prompt: str, request: Request):
     try:
+        # First, collect the complete response from the main agent
+        full_response = ""
         async for event in agent.stream_async(prompt):
-            if "complete" in event:
-                logger.info("Response generation complete")
             if "data" in event:
-                yield f"data: {json.dumps(event['data'])}\n\n"
+                full_response += event["data"]
+        
+        logger.info(f"Initial response generated: {full_response[:100]}...")
+        
+        # Create an OpenAI agent to rate the response
+        max_retries = 2
+        retry_count = 0
+        approved_response = full_response
+        
+        while retry_count < max_retries:
+            # Ask OpenAI to rate the response
+            rating_prompt = f"""You are a quality control agent. Rate the following response against the user's prompt on a scale of 1-10.
+Consider:
+- Relevance to the prompt
+- Clarity and conciseness
+- Accuracy and helpfulness
+- Tone and professionalism
+
+User Prompt: {prompt}
+
+Response: {approved_response}
+
+Provide your rating as a JSON object with this exact format:
+{{"rating": <number between 1-10>, "feedback": "<brief explanation>"}}
+"""
+            
+            # Get rating from OpenAI
+            rating_response = ""
+            async for event in openai_model.generate_stream(
+                messages=[{"role": "user", "content": rating_prompt}],
+                system=[{"text": "You are a quality control assistant. Always respond with valid JSON only."}]
+            ):
+                if "data" in event:
+                    rating_response += event["data"]
+            
+            logger.info(f"Rating response: {rating_response}")
+            
+            # Parse the rating
+            import re
+            json_match = re.search(r'\{.*\}', rating_response, re.DOTALL)
+            if json_match:
+                rating_data = json.loads(json_match.group())
+                rating = rating_data.get("rating", 10)
+                feedback = rating_data.get("feedback", "")
+                
+                logger.info(f"Response rating: {rating}/10 - {feedback}")
+                
+                if rating >= 8:
+                    logger.info("Response approved by quality control")
+                    break
+                else:
+                    # Ask the agent to regenerate with feedback
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        logger.info(f"Response rated {rating}/10, regenerating (attempt {retry_count + 1})")
+                        regeneration_prompt = f"{prompt}\n\nPlease improve your previous response. Quality feedback: {feedback}"
+                        
+                        approved_response = ""
+                        async for event in agent.stream_async(regeneration_prompt):
+                            if "data" in event:
+                                approved_response += event["data"]
+                    else:
+                        logger.warning(f"Max retries reached. Using last response with rating {rating}/10")
+                        break
+            else:
+                logger.warning("Could not parse rating response, using original response")
+                break
+        
+        # Stream the approved response to the client
+        # Split into chunks for streaming effect
+        chunk_size = 50
+        for i in range(0, len(approved_response), chunk_size):
+            chunk = approved_response[i:i + chunk_size]
+            yield f"data: {json.dumps(chunk)}\n\n"
+        
+        logger.info("Response streaming complete")
+        
     except Exception as e:
+        logger.error(f"Error in generate: {str(e)}")
         error_message = json.dumps({"error": str(e)})
         yield f"event: error\ndata: {error_message}\n\n"
 
