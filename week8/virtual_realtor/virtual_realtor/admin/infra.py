@@ -28,6 +28,7 @@ class Admin(Construct):
                                           partition_key=dynamodb.Attribute(name='PK', type=dynamodb.AttributeType.STRING),
                                           sort_key=dynamodb.Attribute(name='SK', type=dynamodb.AttributeType.STRING),
                                           removal_policy=RemovalPolicy.DESTROY,
+                                          time_to_live_attribute='ttl',  # Enable TTL for automatic property expiration
                                         )
 
         cognito = Cognito(self, 'Cognito')

@@ -567,6 +567,56 @@
             opacity: 0.6;
         }
 
+        .suggestions-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px auto 0 auto;
+            width: 100%;
+            max-width: 1000px;
+            box-shadow: 0 2px 6px var(--shadow);
+        }
+
+        .suggestions-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .suggestion-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .suggestion-chip {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-primary);
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .suggestion-chip:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(146, 64, 14, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .suggestions-empty {
+            color: var(--text-secondary);
+            font-size: 14px;
+            text-align: center;
+        }
+
         .clear-chat-button {
             background: linear-gradient(135deg, var(--secondary) 0%, #f59e0b 100%) !important;
             box-shadow: 0 2px 6px rgba(251, 191, 36, 0.3) !important;
@@ -924,6 +974,17 @@
             </div>
             </div>
         </div>
+
+        <div class="suggestions-panel">
+            <div class="suggestions-header">
+                <span>Suggested questions</span>
+                <button class="btn btn-secondary" id="refresh-suggestions">Refresh</button>
+            </div>
+            <div class="suggestion-list" id="suggestion-list">
+                <div class="suggestions-empty">Loading suggestions...</div>
+            </div>
+        </div>
+
         <!-- Experience Section -->
         <div class="experience-section">
             <h2 class="section-title">Professional Experience</h2>
@@ -1138,6 +1199,8 @@
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator');
+        const suggestionList = document.getElementById('suggestion-list');
+        const refreshSuggestionsButton = document.getElementById('refresh-suggestions');
 
         // Configure marked.js for markdown rendering
         marked.setOptions({
@@ -1182,6 +1245,7 @@
         // Initialize chat
         document.addEventListener('DOMContentLoaded', () => {
             loadMessages();
+            loadSuggestions();
             setupEventListeners();
         });
 
@@ -1202,6 +1266,10 @@
             const clearButtonHeader = document.getElementById('clear-chat-button-header');
             if (clearButtonHeader) {
                 clearButtonHeader.addEventListener('click', clearChat);
+            }
+
+            if (refreshSuggestionsButton) {
+                refreshSuggestionsButton.addEventListener('click', loadSuggestions);
             }
         }
 
@@ -1230,6 +1298,36 @@
             } catch (error) {
                 console.error('Error loading messages:', error);
                 showError('Failed to load chat history. Please refresh the page.');
+            }
+        }
+
+        async function loadSuggestions() {
+            if (!suggestionList) return;
+            suggestionList.innerHTML = '<div class="suggestions-empty">Loading suggestions...</div>';
+            try {
+                const response = await fetch('/api/suggestions');
+                if (!response.ok) throw new Error('Failed to load suggestions');
+                const data = await response.json();
+                const items = (data.suggestions || []).slice(0, 4);
+                if (items.length === 0) {
+                    suggestionList.innerHTML = '<div class="suggestions-empty">No suggestions available right now.</div>';
+                    return;
+                }
+                suggestionList.innerHTML = '';
+                items.forEach((s) => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'suggestion-chip';
+                    chip.textContent = s;
+                    chip.addEventListener('click', () => {
+                        messageInput.value = s;
+                        messageInput.focus();
+                    });
+                    suggestionList.appendChild(chip);
+                });
+            } catch (error) {
+                console.error('Error loading suggestions:', error);
+                suggestionList.innerHTML = '<div class="suggestions-empty">Failed to load suggestions.</div>';
             }
         }
 
@@ -1318,6 +1416,7 @@
                 messageInput.disabled = false;
                 sendButton.disabled = false;
                 messageInput.focus();
+                loadSuggestions();
             }
         }
 

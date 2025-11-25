@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands import Agent, tool
-from strands.models import BedrockModel, OpenAIModel
+from strands.models import BedrockModel
 from strands.session.s3_session_manager import S3SessionManager
 from strands_tools import retrieve
 import boto3
@@ -13,7 +13,13 @@ import os
 import uuid
 import uvicorn
 from questions import Question, QuestionManager, Visitor
-
+import re
+try:
+    from strands.models.openai import OpenAIModel
+    OPENAI_AVAILABLE = True
+except ModuleNotFoundError:
+    OPENAI_AVAILABLE = False
+    OpenAIModel = None
 ealtor_team_name="Monika Realty Team"
 realtor_name="Monika Trivedi"
 realtor_email="monika@monikarealty.com"
@@ -33,21 +39,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 model_id = os.environ.get("MODEL_ID", "")
+if model_id == "":
+    raise ValueError("MODEL_ID environment variable is not set.")
+llm_as_a_judge_model_id = os.environ.get("LLM_AS_A_JUDGE_MODEL_ID", "")
+if llm_as_a_judge_model_id == "":
+    raise ValueError("LLM_AS_A_JUDGE_MODEL_ID environment variable is not set.")
 bedrock_model = BedrockModel(
     model_id=model_id,
     # Add Guardrails here
 )
-openai_model = OpenAIModel(
-    client_args={
-        "api_key": os.environ.get("OPENAI_API_KEY", ""),
-    },
-    model_id=os.environ.get("OPENAI_MODEL_ID", "gpt-4o"),
-    params={
-        "max_tokens": 1000,
-        "temperature": 0.7, 
-    }
+llm_as_a_judge_model = BedrockModel(
+    model_id=llm_as_a_judge_model_id,
+    # Add Guardrails here
 )
-current_agent: Agent | None = None
+
 conversation_manager = SlidingWindowConversationManager(
     window_size=10,  # Maximum number of messages to keep
     should_truncate_results=True, # Enable truncating the tool result when a message is too large for the model's context window 
@@ -117,8 +122,144 @@ def capture_visitor_info(name: str, email: str) -> str:
         logger.error(f"Failed to capture visitor info: {str(e)}")
         return f"Failed to capture visitor information: {str(e)}"
 
+@tool
+def search_properties(
+    city: str = None,
+    state: str = None,
+    status: str = "Active",
+    limit: int = 10,
+    zipCode: str = None,
+    address: str = None,
+    latitude: float = None,
+    longitude: float = None,
+    radius: float = None,
+    propertyType: str = None,
+    bedrooms: str = None,
+    bathrooms: str = None,
+    squareFootage: str = None,
+    lotSize: str = None,
+    yearBuilt: str = None,
+    price: str = None,
+    daysOld: str = None,
+    offset: int = None,
+    includeTotalCount: bool = False
+) -> str:
+    """
+    Search for properties for sale using the RentCast API.
+    At least one of city, state, zipCode, or address must be provided.
+    
+    Args:
+        address: Full address of the property (Street, City, State, Zip)
+        city: The city name (case-sensitive, defaults to Austin)
+        state: The 2-character state abbreviation (case-sensitive, defaults to TX)
+        zipCode: The 5-digit zip code
+        latitude: Latitude for circular area search
+        longitude: Longitude for circular area search
+        radius: Search radius in miles (max 100), use with lat/long or address
+        propertyType: Type of property (Single Family, Condo, Townhouse, Manufactured, Multi-Family, Apartment, Land)
+        bedrooms: Number of bedrooms (supports ranges and multiple values, e.g., "3", "3-4", "3,4,5")
+        bathrooms: Number of bathrooms (supports fractions, ranges, and multiple values, e.g., "2", "2.5", "2-3")
+        squareFootage: Total living area in sq ft (supports ranges and multiple values, e.g., "1500-2000")
+        lotSize: Total lot size in sq ft (supports ranges and multiple values)
+        yearBuilt: Year of construction (supports ranges and multiple values, e.g., "2000-2020")
+        status: Property status (Active or Inactive, default: "Active")
+        price: Listed price (supports ranges and multiple values, e.g., "300000-500000")
+        daysOld: Days since listing (minimum 1, supports ranges)
+        limit: Maximum number of results (1-500, default: 10)
+        offset: Index of first record for pagination (default: 0)
+        includeTotalCount: Include total count in X-Total-Count header (default: False)
+        
+    Returns:
+        JSON string containing property listings with details like address, price, bedrooms, bathrooms, etc.
+    """
+    return question_manager.search_properties(
+        city=city,
+        state=state,
+        status=status,
+        limit=limit,
+        zipCode=zipCode,
+        address=address,
+        latitude=latitude,
+        longitude=longitude,
+        radius=radius,
+        propertyType=propertyType,
+        bedrooms=bedrooms,
+        bathrooms=bathrooms,
+        squareFootage=squareFootage,
+        lotSize=lotSize,
+        yearBuilt=yearBuilt,
+        price=price,
+        daysOld=daysOld,
+        offset=offset,
+        includeTotalCount=includeTotalCount
+    )
+
+@tool
+def add_property_info(property_data: dict, ttl_hours: int = None) -> str:
+    """
+    Add or update property information in the database with configurable TTL (time-to-live).
+    The property will be automatically removed from the database after the TTL expires.
+    
+    Args:
+        property_data: Dictionary containing property information. Must include either 'id' or 'formattedAddress'.
+                      Example: {"id": "123", "formattedAddress": "123 Main St, Austin, TX 78701", 
+                               "price": 500000, "bedrooms": 3, "bathrooms": 2, "city": "Austin", "zipCode": "78701"}
+        ttl_hours: Time-to-live in hours (default: 12 hours, configurable via PROPERTY_TTL_HOURS env var)
+        
+    Returns:
+        JSON string with success status, property ID, and expiration time
+    """
+    result = question_manager.add_property_info(property_data=property_data, ttl_hours=ttl_hours)
+    return json.dumps(result, indent=2)
+
+@tool
+def get_property_info(property_id: str = None, property_address: str = None) -> str:
+    """
+    Retrieve property information from the database by property ID or address.
+    
+    Args:
+        property_id: The unique property ID (e.g., "3821-Hargis-St-Austin-TX-78723")
+        property_address: The formatted property address (e.g., "3821 Hargis St, Austin, TX 78723")
+        
+    Note: Either property_id or property_address must be provided.
+    
+    Returns:
+        JSON string containing property information or None if not found
+    """
+    result = question_manager.get_property_info(property_id=property_id, property_address=property_address)
+    if result is None:
+        return json.dumps({"message": "Property not found"})
+    return json.dumps(result, indent=2)
+
+@tool
+def search_properties_by_location(zipCode: str = None, city: str = None, limit: int = 50) -> str:
+    """
+    Search for cached properties in the database by zip code or city name.
+    This searches the local database cache, not the external API.
+    
+    Args:
+        zipCode: The 5-digit zip code to search for
+        city: The city name to search for (case-sensitive)
+        limit: Maximum number of results to return (default: 50)
+        
+    Note: Either zipCode or city must be provided.
+    
+    Returns:
+        JSON string containing list of properties matching the search criteria
+    """
+    result = question_manager.search_properties_by_location(zipCode=zipCode, city=city, limit=limit)
+    return json.dumps(result, indent=2)
+
 def session(id: str) -> Agent:
-    tools = [retrieve, save_unanswered_question, capture_visitor_info]
+    tools = [
+        retrieve, 
+        save_unanswered_question, 
+        capture_visitor_info, 
+        search_properties,
+        add_property_info,
+        get_property_info,
+        search_properties_by_location
+    ]
     session_manager = S3SessionManager(
         boto_session=boto_session,
         bucket=state_bucket_name,
@@ -135,6 +276,44 @@ def session(id: str) -> Agent:
 class ChatRequest(BaseModel):
     prompt: str
 
+async def generate_bedrock_response(agent: Agent, prompt: str) -> str:
+    full_response = ""
+    async for event in agent.stream_async(prompt):
+        if "data" in event:
+            full_response += event["data"]
+    return full_response
+
+async def rate_response_with_llm_as_a_judge(prompt: str, response: str, session_id: str) -> dict | None:
+    if llm_as_a_judge_model is None:
+        logger.warning("LLM as a judge model unavailable; skipping response rating.")
+        return None
+    judge_system_prompt = f"""You are a quality control agent. Rate the following response against the user's prompt on a scale of 1-10.
+    Consider:
+    - Relevance to the prompt
+    - Clarity and conciseness
+    - Accuracy and helpfulness
+    - Tone and professionalism
+    Provide your rating as a JSON object with this exact format:
+    {{"rating": <number between 1-10>, "feedback": "<brief explanation>"}}
+    """
+    # Don't use a session manager for the judge agent - it's a one-off rating and doesn't need conversation history
+    # This avoids inheriting tool use/result blocks from the main conversation
+    judge_agent = Agent(
+        model=llm_as_a_judge_model,
+        system_prompt=judge_system_prompt,
+        tools=[],  # Explicitly set empty tools list to avoid tool-related errors
+    )
+    rating_response = ""
+    async for event in judge_agent.stream_async(f"{prompt}\n\nResponse: {response}"):
+        if "data" in event:
+            rating_response += event["data"]
+    
+    logger.info(f"Rating response: {rating_response}")
+    json_match = re.search(r'\{.*\}', rating_response, re.DOTALL)
+    if not json_match:
+        return None
+    return json.loads(json_match.group())
+
 @app.post('/api/chat')
 async def chat(chat_request: ChatRequest, request: Request):
     session_id: str = request.cookies.get("session_id", str(uuid.uuid4()))
@@ -150,12 +329,32 @@ async def chat(chat_request: ChatRequest, request: Request):
 
 async def generate(agent: Agent, session_id: str, prompt: str, request: Request):
     try:
+        # Stream the response as it's being generated for better UX
+        full_response = ""
         async for event in agent.stream_async(prompt):
-            if "complete" in event:
-                logger.info("Response generation complete")
             if "data" in event:
-                yield f"data: {json.dumps(event['data'])}\n\n"
+                chunk = event["data"]
+                full_response += chunk
+                # Stream each chunk immediately to the client
+                yield f"data: {json.dumps(chunk)}\n\n"
+        
+        logger.info(f"Response generated: {full_response[:100]}...")
+        
+        # Do quality control in the background (non-blocking for now)
+        # TODO: Consider making this optional or async
+        try:
+            rating_data = await rate_response_with_llm_as_a_judge(prompt, full_response, session_id)
+            if rating_data:
+                rating = rating_data.get("rating", 10)
+                feedback = rating_data.get("feedback", "")
+                logger.info(f"Response rating: {rating}/10 - {feedback}")
+        except Exception as rating_error:
+            logger.warning(f"Quality control rating failed: {str(rating_error)}")
+        
+        logger.info("Response streaming complete")
+        
     except Exception as e:
+        logger.error(f"Error in generate: {str(e)}", exc_info=True)
         error_message = json.dumps({"error": str(e)})
         yield f"event: error\ndata: {error_message}\n\n"
 
@@ -209,7 +408,7 @@ def chat_delete(request: Request):
 @app.get('/api/suggestions')
 async def get_suggestions(request: Request):
     """
-    Generate 3 contextually relevant question suggestions based on the conversation history.
+    Generate 4 contextually relevant question suggestions based on the conversation history.
     """
     session_id = request.cookies.get("session_id", str(uuid.uuid4()))
     agent = session(session_id)
@@ -231,20 +430,21 @@ async def get_suggestions(request: Request):
 
 {conversation_context}
 
-Generate exactly 3 relevant follow-up questions that the user might want to ask about properties for sale. 
+Generate exactly 4 relevant follow-up questions that the user might want to ask about properties for sale. 
 These should be natural questions a potential home buyer would ask.
 Return ONLY the 3 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3"]"""
     else:
-        suggestion_prompt = """Generate exactly 3 common questions that someone looking for properties might ask a realtor.
+        suggestion_prompt = """Generate exactly 4 common questions that someone looking for properties might ask a realtor.
 Return ONLY the 3 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3"]"""
     
     try:
-        # Use the model directly without tools for simple generation
+        # Use an Agent with the model for simple generation
+        suggestion_agent = Agent(
+            model=bedrock_model,
+            system_prompt="You are a helpful assistant that generates relevant real estate questions. Always respond with valid JSON only."
+        )
         response_text = ""
-        async for event in bedrock_model.generate_stream(
-            messages=[{"role": "user", "content": suggestion_prompt}],
-            system=[{"text": "You are a helpful assistant that generates relevant real estate questions. Always respond with valid JSON only."}]
-        ):
+        async for event in suggestion_agent.stream_async(suggestion_prompt):
             if "data" in event:
                 response_text += event["data"]
         
