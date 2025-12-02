@@ -149,9 +149,9 @@ class QuestionManager:
     def search_properties(
         self,
         city: str = None,
-        state: str = None,
+        state: str = "CA",
         status: str = "Active",
-        limit: int = 10,
+        limit: int = 30,
         zipCode: str = None,
         address: str = None,
         latitude: float = None,

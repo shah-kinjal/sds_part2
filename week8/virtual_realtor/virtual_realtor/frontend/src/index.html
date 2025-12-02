@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Realtor</title>
+    <title>MK Realty Team - Virtual Property Assistant</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * {
@@ -14,7 +15,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #a8e6cf 0%, #ffd3b6 50%, #ffaaa5 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #fef9f3 100%);
             height: 100vh;
             display: flex;
             align-items: center;
@@ -27,14 +28,15 @@
             height: 90vh;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(244, 185, 66, 0.15);
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            border: 2px solid #f4b942;
         }
 
         .chat-header {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            background: linear-gradient(135deg, #f4b942 0%, #ffd978 100%);
             color: #2d3436;
             padding: 20px;
             display: flex;
@@ -50,16 +52,19 @@
         }
 
         .logo {
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
             flex-shrink: 0;
+            border-radius: 8px;
+            background: white;
+            padding: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .logo-text {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            font-weight: 700;
-            font-size: 14px;
-            fill: #2d3436;
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .header-content {
@@ -73,14 +78,17 @@
 
         .chat-header h1 {
             font-size: 24px;
-            font-weight: 600;
+            font-weight: 700;
             margin: 0;
+            color: #2d3436;
         }
 
         .chat-header p {
             margin-top: 5px;
-            opacity: 0.8;
+            color: #2d3436;
             font-size: 14px;
+            font-weight: 500;
+            opacity: 0.8;
         }
 
         .clear-chat-button {
@@ -106,7 +114,7 @@
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            background: #f8f9fa;
+            background: #ffffff;
         }
 
         .message {
@@ -166,7 +174,7 @@
         }
 
         .message.assistant .message-bubble code {
-            background: rgba(136, 216, 163, 0.3);
+            background: rgba(244, 185, 66, 0.15);
             padding: 2px 6px;
             border-radius: 4px;
             font-family: 'Courier New', monospace;
@@ -175,12 +183,12 @@
         }
 
         .message.assistant .message-bubble pre {
-            background: rgba(136, 216, 163, 0.2);
+            background: rgba(244, 185, 66, 0.08);
             padding: 10px;
             border-radius: 6px;
             overflow-x: auto;
             margin: 0.5em 0;
-            border-left: 3px solid #88d8a3;
+            border-left: 3px solid #f4b942;
         }
 
         .message.assistant .message-bubble pre code {
@@ -189,17 +197,17 @@
         }
 
         .message.assistant .message-bubble blockquote {
-            border-left: 3px solid #88d8a3;
+            border-left: 3px solid #f4b942;
             padding-left: 1em;
             margin: 0.5em 0;
             font-style: italic;
-            background: rgba(136, 216, 163, 0.15);
+            background: rgba(244, 185, 66, 0.08);
             padding: 0.5em 1em;
             border-radius: 4px;
         }
 
         .message.assistant .message-bubble a {
-            color: #ff8b94;
+            color: #e85d75;
             text-decoration: underline;
         }
 
@@ -225,21 +233,23 @@
         }
 
         .message.assistant .message-bubble th {
-            background: rgba(136, 216, 163, 0.3);
+            background: rgba(244, 185, 66, 0.2);
             font-weight: 600;
             color: #2d3436;
         }
 
         .message.assistant .message-bubble {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            background: linear-gradient(135deg, #fff4d6 0%, #ffe9a8 100%);
             color: #2d3436;
             border-bottom-left-radius: 6px;
+            border: 1px solid #f4b942;
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, #ffaaa5 0%, #ff8b94 100%);
+            background: linear-gradient(135deg, #ffe5ea 0%, #ffc9d4 100%);
             color: #2d3436;
             border-bottom-right-radius: 6px;
+            border: 1px solid #e85d75;
         }
 
         .message-role {
@@ -252,7 +262,7 @@
         .chat-input {
             padding: 20px;
             background: white;
-            border-top: 1px solid #e9ecef;
+            border-top: 1px solid #f4b942;
             display: flex;
             gap: 12px;
         }
@@ -260,7 +270,7 @@
         .chat-input input {
             flex: 1;
             padding: 12px 16px;
-            border: 2px solid #e9ecef;
+            border: 2px solid #f4b942;
             border-radius: 25px;
             font-size: 16px;
             outline: none;
@@ -268,12 +278,13 @@
         }
 
         .chat-input input:focus {
-            border-color: #ff8b94;
+            border-color: #e85d75;
+            box-shadow: 0 0 0 3px rgba(232, 93, 117, 0.1);
         }
 
         .chat-input button {
-            background: linear-gradient(135deg, #ffaaa5 0%, #ff8b94 100%);
-            color: #2d3436;
+            background: linear-gradient(135deg, #e85d75 0%, #ff7a93 100%);
+            color: white;
             border: none;
             padding: 12px 24px;
             border-radius: 25px;
@@ -281,12 +292,12 @@
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(255, 139, 148, 0.4);
+            box-shadow: 0 4px 15px rgba(232, 93, 117, 0.3);
         }
 
         .chat-input button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 139, 148, 0.6);
+            box-shadow: 0 6px 20px rgba(232, 93, 117, 0.5);
         }
 
         .chat-input button:disabled {
@@ -299,11 +310,12 @@
             align-items: center;
             gap: 8px;
             padding: 12px 16px;
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            background: linear-gradient(135deg, #fff4d6 0%, #ffe9a8 100%);
             border-radius: 18px;
             border-bottom-left-radius: 6px;
             max-width: 70%;
             margin-bottom: 15px;
+            border: 1px solid #f4b942;
         }
 
         .typing-dots {
@@ -314,7 +326,7 @@
         .typing-dots span {
             width: 8px;
             height: 8px;
-            background: #88d8a3;
+            background: #f4b942;
             border-radius: 50%;
             animation: typing 1.4s infinite ease-in-out;
         }
@@ -328,10 +340,14 @@
         }
 
         @keyframes typing {
-            0%, 60%, 100% {
+
+            0%,
+            60%,
+            100% {
                 transform: scale(0.8);
                 opacity: 0.5;
             }
+
             30% {
                 transform: scale(1);
                 opacity: 1;
@@ -354,7 +370,7 @@
             flex-direction: column;
             gap: 8px;
             background: white;
-            border-top: 1px solid #e9ecef;
+            border-top: 1px solid #f4b942;
         }
 
         .suggestions-label {
@@ -371,16 +387,16 @@
         }
 
         .suggestion-button {
-            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            background: linear-gradient(135deg, #fff4d6 0%, #ffe9a8 100%);
             color: #2d3436;
-            border: none;
+            border: 1px solid #f4b942;
             padding: 8px 14px;
             border-radius: 15px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
-            box-shadow: 0 2px 8px rgba(136, 216, 163, 0.3);
+            box-shadow: 0 2px 8px rgba(244, 185, 66, 0.2);
             flex: 1 1 auto;
             min-width: 150px;
             text-align: left;
@@ -388,8 +404,8 @@
 
         .suggestion-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(136, 216, 163, 0.5);
-            background: linear-gradient(135deg, #88d8a3 0%, #a8e6cf 100%);
+            box-shadow: 0 4px 12px rgba(244, 185, 66, 0.4);
+            background: linear-gradient(135deg, #ffe9a8 0%, #ffd978 100%);
         }
 
         .suggestion-button:active {
@@ -403,28 +419,18 @@
         }
     </style>
 </head>
+
 <body>
     <div class="chat-container">
         <div class="chat-header">
             <div class="logo-container">
-                <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <!-- House shape -->
-                    <rect x="30" y="50" width="40" height="35" fill="#88d8a3" opacity="0.8"/>
-                    <!-- Roof triangle -->
-                    <path d="M 20 50 L 50 25 L 80 50 Z" fill="#ff8b94" opacity="0.9"/>
-                    <!-- Door -->
-                    <rect x="42" y="65" width="16" height="20" fill="#2d3436" opacity="0.7"/>
-                    <!-- Window left -->
-                    <rect x="33" y="55" width="10" height="10" fill="#a8e6cf" opacity="0.9"/>
-                    <!-- Window right -->
-                    <rect x="57" y="55" width="10" height="10" fill="#a8e6cf" opacity="0.9"/>
-                    <!-- Door handle -->
-                    <circle cx="55" cy="75" r="1.5" fill="#ff8b94"/>
-                </svg>
+                <div class="logo">
+                    <img src="mk-realty-logo.jpg" alt="MK Realty Team Logo">
+                </div>
             </div>
             <div class="header-content">
-                <h1 id="chat-title">Virtual Realtor</h1>
-                <p>Ask me anything about properties for sale</p>
+                <h1 id="chat-title">MK Realty Team</h1>
+                <p>Your California Property Expert</p>
             </div>
             <button class="clear-chat-button" id="clear-chat-button">Clear Chat</button>
         </div>
@@ -443,15 +449,16 @@
             <div class="suggestions-buttons" id="suggestions-buttons"></div>
         </div>
         <div class="chat-input">
-            <input type="text" id="message-input" placeholder="Ask about properties, prices, locations..." maxlength="500">
+            <input type="text" id="message-input" placeholder="Ask about California properties, prices, locations..."
+                maxlength="500">
             <button id="send-button">Send</button>
         </div>
     </div>
 
     <script>
         // Update page title
-        document.getElementById('chat-title').textContent = 'Virtual Realtor';
-        document.title = 'Virtual Realtor - Property Assistant';
+        document.getElementById('chat-title').textContent = 'MK Realty Team';
+        document.title = 'MK Realty Team - Virtual Property Assistant';
 
         // DOM elements
         const messagesContainer = document.getElementById('chat-messages');
@@ -489,14 +496,14 @@
             if (!confirm('Are you sure you want to clear the chat history?')) {
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/chat', {
                     method: 'DELETE'
                 });
-                
+
                 if (!response.ok) throw new Error('Failed to clear chat');
-                
+
                 messagesContainer.innerHTML = '';
                 scrollToBottom();
             } catch (error) {
@@ -509,15 +516,15 @@
             try {
                 const response = await fetch('/api/chat');
                 if (!response.ok) throw new Error('Failed to load messages');
-                
+
                 const data = await response.json();
                 messagesContainer.innerHTML = '';
-                
+
                 data.messages.forEach(message => {
                     const content = message.content[0].text;
                     displayMessage(message.role, content, false);
                 });
-                
+
                 scrollToBottom();
             } catch (error) {
                 console.error('Error loading messages:', error);
@@ -532,11 +539,11 @@
             // Disable input while sending
             messageInput.disabled = true;
             sendButton.disabled = true;
-            
+
             // Display user message
             displayMessage('user', message, true);
             messageInput.value = '';
-            
+
             // Show typing indicator
             showTypingIndicator();
 
@@ -570,17 +577,17 @@
                         if (line.startsWith('data: ')) {
                             const data = line.slice(6).trim();
                             if (data === '[DONE]' || data === '') continue;
-                            
+
                             try {
                                 // Parse the JSON-encoded string to get the actual text
                                 const textChunk = JSON.parse(data);
                                 assistantMessage += textChunk;
-                                
+
                                 if (!messageElement) {
                                     messageElement = createMessageElement('assistant', '', true);
                                     messagesContainer.appendChild(messageElement);
                                 }
-                                
+
                                 const bubble = messageElement.querySelector('.message-bubble');
                                 bubble.innerHTML = marked.parse(assistantMessage);
                                 scrollToBottom();
@@ -588,12 +595,12 @@
                                 // If JSON parsing fails, treat as plain text (fallback)
                                 console.warn('Failed to parse JSON chunk:', data);
                                 assistantMessage += data;
-                                
+
                                 if (!messageElement) {
                                     messageElement = createMessageElement('assistant', '', true);
                                     messagesContainer.appendChild(messageElement);
                                 }
-                                
+
                                 const bubble = messageElement.querySelector('.message-bubble');
                                 bubble.innerHTML = marked.parse(assistantMessage);
                                 scrollToBottom();
@@ -617,7 +624,7 @@
             const isMarkdown = role === 'assistant';
             const messageElement = createMessageElement(role, content, isMarkdown);
             messagesContainer.appendChild(messageElement);
-            
+
             if (animate) {
                 messageElement.style.opacity = '0';
                 messageElement.style.transform = 'translateY(20px)';
@@ -627,23 +634,23 @@
                     messageElement.style.transform = 'translateY(0)';
                 }, 10);
             }
-            
+
             scrollToBottom();
         }
 
         function createMessageElement(role, content, isMarkdown = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
-            
+
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
-            
+
             if (isMarkdown && content) {
                 bubbleDiv.innerHTML = marked.parse(content);
             } else {
                 bubbleDiv.textContent = content;
             }
-            
+
             messageDiv.appendChild(bubbleDiv);
             return messageDiv;
         }
@@ -663,7 +670,7 @@
             errorDiv.textContent = message;
             messagesContainer.appendChild(errorDiv);
             scrollToBottom();
-            
+
             setTimeout(() => {
                 errorDiv.remove();
             }, 5000);
@@ -678,7 +685,7 @@
             try {
                 const response = await fetch('/api/suggestions');
                 if (!response.ok) throw new Error('Failed to load suggestions');
-                
+
                 const data = await response.json();
                 displaySuggestions(data.suggestions);
             } catch (error) {
@@ -690,7 +697,7 @@
 
         function displaySuggestions(suggestions) {
             suggestionsButtons.innerHTML = '';
-            
+
             if (!suggestions || suggestions.length === 0) {
                 suggestionsContainer.style.display = 'none';
                 return;
@@ -720,7 +727,7 @@
 
         // Load suggestions after messages are loaded and after each assistant response
         const originalLoadMessages = loadMessages;
-        loadMessages = async function() {
+        loadMessages = async function () {
             await originalLoadMessages();
             // Load suggestions after initial messages
             setTimeout(() => loadSuggestions(), 500);
@@ -728,7 +735,7 @@
 
         // Override sendMessage to refresh suggestions after response
         const originalSendMessage = sendMessage;
-        sendMessage = async function() {
+        sendMessage = async function () {
             hideSuggestions(); // Hide while sending
             await originalSendMessage();
             // Load new suggestions after response completes
@@ -736,4 +743,5 @@
         };
     </script>
 </body>
+
 </html>

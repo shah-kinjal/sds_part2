@@ -37,6 +37,9 @@ class Backend(Construct):
         rental_cast_api_key = rental_cast_api_key or os.environ.get("RENTAL_CAST_API_KEY", "")
         rentcast_api_url = rentcast_api_url or os.environ.get("RENTCAST_API_URL", "https://api.rentcast.io/v1/listings/sale")
         rental_cast_api_url = rental_cast_api_url or os.environ.get("RENTAL_CAST_API_URL", "https://api.rentcast.io/v1/listings/sale")
+        # Serper API configuration for web search
+        serper_api_key = os.environ.get("SERPER_API_KEY", "")
+        serper_url = os.environ.get("SERPER_URL", "https://google.serper.dev/search")
 
         state_bucket = s3.Bucket(self, 'StateBucket')
         notification_topic = sns.Topic(self, 'StateNotificationTopic')
@@ -79,6 +82,8 @@ class Backend(Construct):
                                     "RENTCAST_API_KEY": rentcast_api_key,
                                     "RENTAL_CAST_API_KEY": rental_cast_api_key,
                                     "PROPERTY_TTL_HOURS": os.environ.get("PROPERTY_TTL_HOURS", "12"),
+                                    "SERPER_API_KEY": serper_api_key,
+                                    "SERPER_URL": serper_url,
                                 },
                               memory_size=1024,
                              )
