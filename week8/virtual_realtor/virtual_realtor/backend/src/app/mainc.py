@@ -2,10 +2,9 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from strands.agent.conversation_manager import SlidingWindowConversationManager
-from strands import Agent, tool
+from strands import Agent
 from strands.models import BedrockModel
 from strands.session.s3_session_manager import S3SessionManager
-from strands_tools import retrieve
 import boto3
 import json
 import logging
@@ -13,8 +12,6 @@ import os
 import uuid
 import uvicorn
 import re
-from tools import ALL_TOOLS
-
 try:
     from strands.models.openai import OpenAIModel
     OPENAI_AVAILABLE = True
@@ -22,6 +19,8 @@ except ModuleNotFoundError:
     OPENAI_AVAILABLE = False
     OpenAIModel = None
 
+# Import all tools from the tools module
+from tools import ALL_TOOLS
 
 realtor_team_name="Monika Realty Team"
 realtor_name="Monika Trivedi"
@@ -42,25 +41,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 model_id = os.environ.get("MODEL_ID", "")
+if model_id == "":
+    raise ValueError("MODEL_ID environment variable is not set.")
+llm_as_a_judge_model_id = os.environ.get("LLM_AS_A_JUDGE_MODEL_ID", "us.amazon.nova-pro-v1:0")
+
 bedrock_model = BedrockModel(
     model_id=model_id,
     # Add Guardrails here
 )
-openai_model = None
-if OPENAI_AVAILABLE:
-    openai_model = OpenAIModel(
-        client_args={
-            "api_key": os.environ.get("OPENAI_API_KEY", ""),
-        },
-        model_id=os.environ.get("OPENAI_MODEL_ID", "gpt-4o"),
-        params={
-            "max_tokens": 1000,
-            "temperature": 0.7, 
-        }
-    )
-else:
-    logger.warning("OpenAI dependency not installed; skipping quality-control ratings.")
-current_agent: Agent | None = None
+llm_as_a_judge_model = None
+
+
 conversation_manager = SlidingWindowConversationManager(
     window_size=10,  # Maximum number of messages to keep
     should_truncate_results=True, # Enable truncating the tool result when a message is too large for the model's context window 
@@ -87,9 +78,7 @@ When searching for information via a tool, tell the user you are "trying to get 
 """
 app = FastAPI()
 
-
 def session(id: str) -> Agent:
-    
     session_manager = S3SessionManager(
         boto_session=boto_session,
         bucket=state_bucket_name,
@@ -106,52 +95,54 @@ def session(id: str) -> Agent:
 class ChatRequest(BaseModel):
     prompt: str
 
+
+
+async def rate_response_with_llm_as_a_judge(prompt: str, response: str, session_id: str) -> dict | None:
+    if llm_as_a_judge_model is None:
+        logger.warning("LLM as a judge model unavailable; skipping response rating.")
+        return None
+    judge_system_prompt = f"""You are a quality control agent. Rate the following response against the user's prompt on a scale of 1-10.
+    Consider:
+    - Relevance to the prompt
+    - Clarity and conciseness
+    - Accuracy and helpfulness
+    - Tone and professionalism
+    Provide your rating as a JSON object with this exact format:
+    {{"rating": <number between 1-10>, "feedback": "<brief explanation>"}}
+    """
+    # Don't use a session manager for the judge agent - it's a one-off rating and doesn't need conversation history
+    # This avoids inheriting tool use/result blocks from the main conversation
+    judge_agent = Agent(
+        model=llm_as_a_judge_model,
+        system_prompt=judge_system_prompt,
+        tools=[],  # Explicitly set empty tools list to avoid tool-related errors
+    )
+    rating_response = ""
+    async for event in judge_agent.stream_async(f"{prompt}\n\nResponse: {response}"):
+        if "data" in event:
+            rating_response += event["data"]
+    
+    logger.info(f"Rating response: {rating_response}")
+    json_match = re.search(r'\{.*\}', rating_response, re.DOTALL)
+    if not json_match:
+        return None
+    return json.loads(json_match.group())
+
 async def generate_bedrock_response(agent: Agent, prompt: str) -> str:
+    """
+    Generate a complete response from the agent for the given prompt.
+    This function collects all streaming chunks into a single response.
+    """
     full_response = ""
     async for event in agent.stream_async(prompt):
         if "data" in event:
             full_response += event["data"]
     return full_response
 
-async def rate_response_with_openai(prompt: str, response: str) -> dict | None:
-    if openai_model is None:
-        logger.warning("OpenAI model unavailable; skipping response rating.")
-        return None
-
-    rating_prompt = f"""You are a quality control agent. Rate the following response against the user's prompt on a scale of 1-10.
-Consider:
-- Relevance to the prompt
-- Clarity and conciseness
-- Accuracy and helpfulness
-- Tone and professionalism
-
-User Prompt: {prompt}
-
-Response: {response}
-
-Provide your rating as a JSON object with this exact format:
-{{"rating": <number between 1-10>, "feedback": "<brief explanation>"}}
-"""
-
-    rating_response = ""
-    async for event in openai_model.generate_stream(
-        messages=[{"role": "user", "content": rating_prompt}],
-        system=[{"text": "You are a quality control assistant. Always respond with valid JSON only."}]
-    ):
-        if "data" in event:
-            rating_response += event["data"]
-
-    logger.info(f"Rating response: {rating_response}")
-    json_match = re.search(r'\{.*\}', rating_response, re.DOTALL)
-    if not json_match:
-        return None
-
-    return json.loads(json_match.group())
-
 @app.post('/api/chat')
 async def chat(chat_request: ChatRequest, request: Request):
     session_id: str = request.cookies.get("session_id", str(uuid.uuid4()))
-    
+    logger.debug(f"Session ID: {session_id}")    
     agent = session(session_id)
     global current_agent
     current_agent = agent  # Store the current agent for use in tools
@@ -172,7 +163,7 @@ async def generate(agent: Agent, session_id: str, prompt: str, request: Request)
         approved_response = full_response
         
         while retry_count < max_retries:
-            rating_data = await rate_response_with_openai(prompt, approved_response)
+            rating_data = await rate_response_with_llm_as_a_judge(prompt, approved_response, session_id)
             if not rating_data:
                 logger.warning("Could not parse rating response, using original response")
                 break
@@ -236,6 +227,8 @@ def chat_get(request: Request):
     response.set_cookie(key="session_id", value=session_id)
     return response
 
+
+
 @app.get('/api/suggestions')
 async def get_suggestions(request: Request):
     """
@@ -261,20 +254,21 @@ async def get_suggestions(request: Request):
 
 {conversation_context}
 
-Generate exactly 4 relevant follow-up questions that the user might ask to learn more about Kinjal's background, experience, or projects.
-These should feel natural for a recruiter or hiring manager.
-Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3", "question 4"]"""
+Generate exactly 4 relevant follow-up questions that the user might want to ask about properties for sale. 
+These should be natural questions a potential home buyer would ask.
+Return ONLY the 3 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3"]"""
     else:
-        suggestion_prompt = """Generate exactly 4 common questions that someone evaluating Kinjal's fit for a role might ask.
-Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3", "question 4"]"""
+        suggestion_prompt = """Generate exactly 4 common questions that someone looking for properties might ask a realtor.
+Return ONLY the 3 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3"]"""
     
     try:
-        # Use the model directly without tools for simple generation
+        # Use an Agent with the model for simple generation
+        suggestion_agent = Agent(
+            model=bedrock_model,
+            system_prompt="You are a helpful assistant that generates relevant real estate questions. Always respond with valid JSON only."
+        )
         response_text = ""
-        async for event in bedrock_model.generate_stream(
-            messages=[{"role": "user", "content": suggestion_prompt}],
-            system=[{"text": "You are a helpful assistant that generates concise career-related questions. Always respond with valid JSON only."}]
-        ):
+        async for event in suggestion_agent.stream_async(suggestion_prompt):
             if "data" in event:
                 response_text += event["data"]
         
@@ -284,15 +278,14 @@ Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1"
         json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
         if json_match:
             suggestions = json.loads(json_match.group())
-            # Ensure we have exactly 4 suggestions
-            suggestions = suggestions[:4]
+            # Ensure we have exactly 3 suggestions
+            suggestions = suggestions[:3]
         else:
             # Fallback suggestions if parsing fails
             suggestions = [
-                "What roles are you focusing on right now?",
-                "Can you summarize your recent leadership achievements?",
-                "What are your core technical specializations?",
-                "Do you have experience scaling engineering teams?"
+                "What properties are currently available in the area?",
+                "Can you tell me about the price range of homes?",
+                "What are the features of properties in this neighborhood?"
             ]
         
         response = Response(
@@ -306,10 +299,9 @@ Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1"
         logger.error(f"Error generating suggestions: {str(e)}")
         # Return default suggestions on error
         default_suggestions = [
-            "What roles are you focusing on right now?",
-            "Can you summarize your recent leadership achievements?",
-            "What are your core technical specializations?",
-            "Do you have experience scaling engineering teams?"
+            "What properties are currently available?",
+            "Can you tell me about pricing in the area?",
+            "What amenities do the properties have?"
         ]
         response = Response(
             content=json.dumps({"suggestions": default_suggestions}),
@@ -317,7 +309,6 @@ Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1"
         )
         response.set_cookie(key="session_id", value=session_id)
         return response
-
 
 # Called by the Lambda Adapter to check liveness
 @app.get("/")
