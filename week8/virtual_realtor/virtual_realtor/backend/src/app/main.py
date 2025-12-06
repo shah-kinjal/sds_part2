@@ -29,6 +29,7 @@ realtor_email="monika@monikarealty.com"
 realtor_phone="510-468-2232"
 realltor_dre_number="206536433"
 realter_website="https://www.monikarealty.com"
+area_expertise="San Francisco Bay Area"
 # Re-use boto session across invocations
 boto_session = boto3.Session()
 state_bucket_name = os.environ.get("STATE_BUCKET", "")
@@ -66,24 +67,42 @@ conversation_manager = SlidingWindowConversationManager(
     should_truncate_results=True, # Enable truncating the tool result when a message is too large for the model's context window 
 )
 SYSTEM_PROMPT = f"""
-You are a digital avatar representative of {realtor_name} their dre id is{realltor_dre_number}
+You are a knowledgeable realtor. 
+You  a digital representative of {realtor_name} their dre id is{realltor_dre_number}
 and their website is {realter_website}, and their email is {realtor_email} and their phone is {realtor_phone}.
-Answering quesions as a realtor in California.
-You answer questions about properoties available for sale in a given area.
-by  looking up the information about the properties in the knowledge base.
- 
-if You cannot find the information you need, you can say you don't have knowledge of the properties
+Answering quesions as a realtor in California. {realtor_name} is is experty in {area_expertise}
+You answer questions about properoties currently available for sale.
+
+Pleaes look for property  information in the database first. 
+If not found in the database, use either search_properties or search_properties_by_location to search for information about properties currently available for sale.
+Add the information to the database using the add_property tool if not found in the database.
+
+If you cannot find the information you need to answer a question factually, let the user know that you don't have that specific information 
 and add the question to the database for future reference using the save_unanswered_question tool.
 Let the user know that you've added the question to the database for future review and to comeback for an answer and 
 ask for a contact information and capture the information using the capture_visitor_info tool.
+
+
+You have access to a search_web tool that can search Google for real-time information.
+Use this tool when you need current information about:
+- Neighborhoods and local amenities
+- School ratings and quality
+- Crime rates and safety statistics
+- Market trends and property values
+- Local attractions, restaurants, and shopping
+- Transportation and commute times
+- Any other real-time information not in the knowledge base
+
 After a brief interaction, gently ask for a contact information and capture the information using the capture_visitor_info tool.
 Only answer questions about the properties based on the information you get from the tools. Do not make up information.
 
-You should answer questions about {realtor_name}'s services for current or perspective clients.
+
+You should answer questions about {realtor_name}'s services for current or perspective clients. You can get that information using 
+retrive tool or search_web tool.
 You are humorous in your answers when appropriate. Keep the asnwer as brief as possible and concise.
 No need to provide the whole story. Do not be verbose. Be brief and to the point.
 
-When searching for information via a tool, tell the user you are "trying to get the information", and then use the tool to retrieve it.
+When searching for information via a tool, tell the user you are "trying to get the information".
 """
 app = FastAPI()
 
@@ -236,6 +255,7 @@ def chat_get(request: Request):
     response.set_cookie(key="session_id", value=session_id)
     return response
 
+
 @app.get('/api/suggestions')
 async def get_suggestions(request: Request):
     """
@@ -261,20 +281,21 @@ async def get_suggestions(request: Request):
 
 {conversation_context}
 
-Generate exactly 4 relevant follow-up questions that the user might ask to learn more about Kinjal's background, experience, or projects.
-These should feel natural for a recruiter or hiring manager.
-Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3", "question 4"]"""
+Generate exactly 4 relevant and short follow-up questions that the user might want to ask about properties for sale. 
+These should be natural questions a potential home buyer would ask.
+Return ONLY the 4 questions as a JSON array, no other information necessary. Format: ["question 1", "question 2", "question 3", "question 4"]"""
     else:
-        suggestion_prompt = """Generate exactly 4 common questions that someone evaluating Kinjal's fit for a role might ask.
-Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3", "question 4"]"""
+        suggestion_prompt = """Generate exactly 4 relevant and short common questions that someone looking for properties might ask a realtor.
+Return ONLY the 4 questions as a JSON array, no other information necessary. Format: ["question 1", "question 2", "question 3", "question 4"]"""
     
     try:
-        # Use the model directly without tools for simple generation
+        # Use an Agent with the model for simple generation
+        suggestion_agent = Agent(
+            model=bedrock_model,
+            system_prompt="You are a helpful real estate advising assistant that generates relevant real estate questions. Always respond with valid JSON only."
+        )
         response_text = ""
-        async for event in bedrock_model.generate_stream(
-            messages=[{"role": "user", "content": suggestion_prompt}],
-            system=[{"text": "You are a helpful assistant that generates concise career-related questions. Always respond with valid JSON only."}]
-        ):
+        async for event in suggestion_agent.stream_async(suggestion_prompt):
             if "data" in event:
                 response_text += event["data"]
         
@@ -289,10 +310,10 @@ Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1"
         else:
             # Fallback suggestions if parsing fails
             suggestions = [
-                "What roles are you focusing on right now?",
-                "Can you summarize your recent leadership achievements?",
-                "What are your core technical specializations?",
-                "Do you have experience scaling engineering teams?"
+                "What properties are currently available in the area?",
+                "Can you tell me about the price range of homes?",
+                "What are the features of properties in this neighborhood?",
+                "How is the local school district?"
             ]
         
         response = Response(
@@ -306,10 +327,10 @@ Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1"
         logger.error(f"Error generating suggestions: {str(e)}")
         # Return default suggestions on error
         default_suggestions = [
-            "What roles are you focusing on right now?",
-            "Can you summarize your recent leadership achievements?",
-            "What are your core technical specializations?",
-            "Do you have experience scaling engineering teams?"
+            "What properties are currently available?",
+            "Can you tell me about pricing in the area?",
+            "What amenities do the properties have?",
+            "How are the local schools?"
         ]
         response = Response(
             content=json.dumps({"suggestions": default_suggestions}),
@@ -317,7 +338,6 @@ Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1"
         )
         response.set_cookie(key="session_id", value=session_id)
         return response
-
 
 # Called by the Lambda Adapter to check liveness
 @app.get("/")

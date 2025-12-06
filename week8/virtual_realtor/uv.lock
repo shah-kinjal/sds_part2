@@ -3,31 +3,6 @@ revision = 3
 requires-python = ">=3.13"
 
 [[package]]
-name = "1-admin-ui"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "aws-cdk-lib" },
-    { name = "constructs" },
-    { name = "python-dotenv" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aws-cdk-lib", specifier = "==2.206.0" },
-    { name = "constructs", specifier = ">=10.0.0,<11.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = "==6.2.5" }]
-
-[[package]]
 name = "atomicwrites"
 version = "1.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -284,3 +259,28 @@ sdist = { url = "https://files.pythonhosted.org/packages/98/5a/da40306b885cc8c09
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b5/00/d631e67a838026495268c2f6884f3711a15a9a2a96cd244fdaea53b823fb/typing_extensions-4.14.1-py3-none-any.whl", hash = "sha256:d1e1e3b58374dc93031d6eda2420a48ea44a36c2b4766a4fdeb3710755731d76", size = 43906, upload-time = "2025-07-04T13:28:32.743Z" },
 ]
+
+[[package]]
+name = "virtual-realtor"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "aws-cdk-lib" },
+    { name = "constructs" },
+    { name = "python-dotenv" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aws-cdk-lib", specifier = "==2.206.0" },
+    { name = "constructs", specifier = ">=10.0.0,<11.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = "==6.2.5" }]

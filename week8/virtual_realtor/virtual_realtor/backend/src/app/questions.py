@@ -451,3 +451,99 @@ class QuestionManager:
             error_msg = f"Error searching properties by location: {str(e)}"
             logger.error(error_msg, exc_info=True)
             return [{'error': error_msg}]
+
+    def search_web(
+        self,
+        query: str,
+        num_results: int = 5
+    ) -> str:
+        """
+        Search the web using Google via the Serper API.
+        
+        Args:
+            query: The search query string
+            num_results: Number of search results to return (default: 5, max: 10)
+            
+        Returns:
+            JSON string containing search results with titles, links, and snippets
+        """
+        serper_api_key = os.environ.get("SERPER_API_KEY", "")
+        serper_url = os.environ.get("SERPER_URL", "https://google.serper.dev/search")
+        
+        if not serper_api_key:
+            logger.error("SERPER_API_KEY environment variable is not set")
+            return json.dumps({
+                "error": "Web search is not configured. Please contact support.",
+                "results": []
+            })
+        
+        try:
+            headers = {
+                "X-API-KEY": serper_api_key,
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "q": query,
+                "num": min(num_results, 10)  # Cap at 10 results
+            }
+            
+            logger.info(f"Searching web for: {query}")
+            response = requests.post(serper_url, headers=headers, json=payload, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Extract relevant information
+            results = {
+                "query": query,
+                "organic_results": []
+            }
+            
+            # Add organic search results
+            if "organic" in data:
+                for item in data["organic"][:num_results]:
+                    results["organic_results"].append({
+                        "title": item.get("title", ""),
+                        "link": item.get("link", ""),
+                        "snippet": item.get("snippet", "")
+                    })
+            
+            # Add knowledge graph if available
+            if "knowledgeGraph" in data:
+                kg = data["knowledgeGraph"]
+                results["knowledge_graph"] = {
+                    "title": kg.get("title", ""),
+                    "description": kg.get("description", ""),
+                    "attributes": kg.get("attributes", {})
+                }
+            
+            # Add answer box if available
+            if "answerBox" in data:
+                ab = data["answerBox"]
+                results["answer_box"] = {
+                    "answer": ab.get("answer", ""),
+                    "snippet": ab.get("snippet", "")
+                }
+            
+            logger.info(f"Web search completed successfully with {len(results['organic_results'])} results")
+            return json.dumps(results, indent=2)
+            
+        except requests.exceptions.Timeout:
+            logger.error(f"Web search timed out for query: {query}")
+            return json.dumps({
+                "error": "Search request timed out. Please try again.",
+                "results": []
+            })
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Web search failed for query '{query}': {str(e)}")
+            return json.dumps({
+                "error": f"Search failed: {str(e)}",
+                "results": []
+            })
+        except Exception as e:
+            logger.error(f"Unexpected error during web search: {str(e)}")
+            return json.dumps({
+                "error": f"An unexpected error occurred: {str(e)}",
+                "results": []
+            })

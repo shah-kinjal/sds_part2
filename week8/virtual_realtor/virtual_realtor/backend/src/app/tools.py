@@ -193,6 +193,24 @@ def search_properties_by_location(zipCode: str = None, city: str = None, limit: 
     return json.dumps(result, indent=2)
 
 
+@tool
+def search_web(query: str, num_results: int = 5) -> str:
+    """
+    Search the web using Google via the Serper API.
+    Use this tool to find current information about neighborhoods, market trends,
+    local amenities, schools, crime rates, or any other real-time information
+    that might help answer questions about properties and locations.
+    
+    Args:
+        query: The search query string (e.g., "best schools in Austin TX", "crime rate in San Francisco")
+        num_results: Number of search results to return (default: 5, max: 10)
+        
+    Returns:
+        JSON string containing search results with titles, links, and snippets
+    """
+    return question_manager.search_web(query=query, num_results=num_results)
+
+
 # Export all tools as a list for easy import
 ALL_TOOLS = [
     retrieve,
@@ -201,5 +219,6 @@ ALL_TOOLS = [
     search_properties,
     add_property_info,
     get_property_info,
-    search_properties_by_location
+    search_properties_by_location,
+    search_web
 ]
