@@ -135,7 +135,7 @@ def search_properties(
 
 
 @tool
-def add_property_info(property_data: dict, ttl_hours: int = None) -> str:
+def add_property_info_to_db(property_data: dict, ttl_hours: int = None) -> str:
     """
     Add or update property information in the database with configurable TTL (time-to-live).
     The property will be automatically removed from the database after the TTL expires.
@@ -154,7 +154,7 @@ def add_property_info(property_data: dict, ttl_hours: int = None) -> str:
 
 
 @tool
-def get_property_info(property_id: str = None, property_address: str = None) -> str:
+def get_property_info_from_db(property_id: str = None, property_address: str = None) -> str:
     """
     Retrieve property information from the database by property ID or address.
     
@@ -167,14 +167,14 @@ def get_property_info(property_id: str = None, property_address: str = None) -> 
     Returns:
         JSON string containing property information or None if not found
     """
-    result = question_manager.get_property_info(property_id=property_id, property_address=property_address)
+    result = question_manager.get_property_info_from_db(property_id=property_id, property_address=property_address)
     if result is None:
         return json.dumps({"message": "Property not found"})
     return json.dumps(result, indent=2)
 
 
 @tool
-def search_properties_by_location(zipCode: str = None, city: str = None, limit: int = 50) -> str:
+def search_properties_by_location_from_db(zipCode: str = None, city: str = None, limit: int = 50) -> str:
     """
     Search for cached properties in the database by zip code or city name.
     This searches the local database cache, not the external API.
@@ -189,7 +189,7 @@ def search_properties_by_location(zipCode: str = None, city: str = None, limit: 
     Returns:
         JSON string containing list of properties matching the search criteria
     """
-    result = question_manager.search_properties_by_location(zipCode=zipCode, city=city, limit=limit)
+    result = question_manager.search_properties_by_location_from_db(zipCode=zipCode, city=city, limit=limit)
     return json.dumps(result, indent=2)
 
 
@@ -217,8 +217,8 @@ ALL_TOOLS = [
     save_unanswered_question,
     capture_visitor_info,
     search_properties,
-    add_property_info,
-    get_property_info,
-    search_properties_by_location,
+    add_property_info_to_db,
+    get_property_info_from_db,
+    search_properties_by_location_from_db,
     search_web
 ]

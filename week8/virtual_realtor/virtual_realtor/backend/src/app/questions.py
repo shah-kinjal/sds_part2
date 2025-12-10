@@ -261,7 +261,7 @@ class QuestionManager:
             logger.error(error_msg, exc_info=True)
             return json.dumps({"error": error_msg})
 
-    def add_property_info(
+    def add_property_info_to_db(
         self,
         property_data: Dict[str, Any],
         ttl_hours: int = None
@@ -333,7 +333,7 @@ class QuestionManager:
                 'error': error_msg
             }
 
-    def get_property_info(
+    def get_property_info_from_db(
         self,
         property_id: str = None,
         property_address: str = None
@@ -381,7 +381,7 @@ class QuestionManager:
             logger.error(error_msg, exc_info=True)
             return {'error': error_msg}
 
-    def search_properties_by_location(
+    def search_properties_by_location_from_db(
         self,
         zipCode: str = None,
         city: str = None,
