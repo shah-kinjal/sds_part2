@@ -604,6 +604,125 @@
                 font-size: 11px;
             }
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-container);
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            position: relative;
+            border: 2px solid var(--border-primary);
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .modal-input-group {
+            margin-bottom: 15px;
+        }
+
+        .modal-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .modal-input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--border-primary);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-tertiary) 0%, var(--accent-quaternary) 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--border-primary) !important;
+            color: var(--text-primary);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        #login-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: transparent;
+            border: 2px solid #2d3436;
+            color: #2d3436;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #login-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #login-btn.logged-in {
+            background: #2d3436;
+            color: #ffd978;
+            border-color: #2d3436;
+        }
     </style>
 </head>
 
@@ -611,6 +730,7 @@
     <div class="page-wrapper">
         <div class="chat-container">
             <div class="chat-header">
+                <button id="login-btn">Login</button>
                 <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
@@ -663,7 +783,55 @@
         </div>
     </div>
 
-    <script>
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal">
+            <button class="close-modal" id="close-modal">&times;</button>
+            <h2 id="modal-title">Sign In</h2>
+            <div id="auth-step-1">
+                <div class="modal-input-group">
+                    <label for="email-input">Email Address</label>
+                    <input type="email" id="email-input" placeholder="Enter your email">
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn-primary" id="request-otp-btn">Send OTP</button>
+                </div>
+            </div>
+            <div id="auth-step-2" style="display: none;">
+                <p style="margin-bottom: 15px; font-size: 14px; text-align: center;">Enter the code sent to your email.
+                </p>
+                <div class="modal-input-group">
+                    <label for="otp-input">Verification Code</label>
+                    <input type="text" id="otp-input" placeholder="123456">
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn-secondary" id="back-to-email-btn">Back</button>
+                    <button class="btn-primary" id="verify-otp-btn">Verify & Sign In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Amplify } from 'https://esm.sh/aws-amplify@6.6.0?bundle';
+        import { signIn, confirmSignIn, getCurrentUser, fetchAuthSession, signOut } from 'https://esm.sh/aws-amplify@6.6.0/auth?bundle';
+
+        // Amplify Configuration
+        Amplify.configure({
+            Auth: {
+                Cognito: {
+                    userPoolId: 'us-west-2_CA5WMVeTf',
+                    userPoolClientId: '6emisug81p9qlaonq4ufghsm2t',
+                    loginWith: {
+                        email: true,
+                    }
+                }
+            }
+        });
+
+        // Auth State
+        let currentUser = null;
+
         // CONFIGURATION - Edit this name to customize for different jobseekers
         const JOBSEEKER_NAME = "MT - Virtual Realtor";
 
@@ -681,8 +849,22 @@
         const clearInputButton = document.getElementById('clear-input-button');
         const clearSessionButton = document.getElementById('clear-session-button');
 
+        // Auth DOM elements
+        const loginBtn = document.getElementById('login-btn');
+        const loginModal = document.getElementById('login-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const emailInput = document.getElementById('email-input');
+        const requestOtpBtn = document.getElementById('request-otp-btn');
+        const step1Div = document.getElementById('auth-step-1');
+        const step2Div = document.getElementById('auth-step-2');
+        const otpInput = document.getElementById('otp-input');
+        const verifyOtpBtn = document.getElementById('verify-otp-btn');
+        const backToEmailBtn = document.getElementById('back-to-email-btn');
+        const modalTitle = document.getElementById('modal-title');
+
         // Initialize chat
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkUserState();
             loadMessages();
             setupEventListeners();
             loadSuggestions();
@@ -751,19 +933,123 @@
                     sendMessage();
                 }
             });
+
+            // Auth Listeners
+            loginBtn.addEventListener('click', async () => {
+                if (currentUser) {
+                    await signOut();
+                    currentUser = null;
+                    loginBtn.textContent = 'Login';
+                    loginBtn.classList.remove('logged-in');
+                    window.location.reload(); // Clear session
+                } else {
+                    loginModal.classList.add('active');
+                    resetModal();
+                }
+            });
+
+            closeModalBtn.addEventListener('click', () => {
+                loginModal.classList.remove('active');
+            });
+
+            requestOtpBtn.addEventListener('click', async () => {
+                const email = emailInput.value;
+                if (!email) return alert('Please enter email');
+                try {
+                    requestOtpBtn.textContent = 'Sending...';
+                    requestOtpBtn.disabled = true;
+                    // For Email OTP with Cognito Native
+                    const output = await signIn({ username: email, options: { authFlowType: 'USER_AUTH' } });
+                    console.log(output);
+                    step1Div.style.display = 'none';
+                    step2Div.style.display = 'block';
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                } finally {
+                    requestOtpBtn.textContent = 'Send OTP';
+                    requestOtpBtn.disabled = false;
+                }
+            });
+
+            verifyOtpBtn.addEventListener('click', async () => {
+                const code = otpInput.value;
+                if (!code) return alert('Enter code');
+                try {
+                    verifyOtpBtn.textContent = 'Verifying...';
+                    verifyOtpBtn.disabled = true;
+                    const output = await confirmSignIn({ challengeResponse: code });
+                    console.log(output);
+                    if (await getCurrentUser()) {
+                        loginModal.classList.remove('active');
+                        await checkUserState();
+                        window.location.reload();
+                    }
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                } finally {
+                    verifyOtpBtn.textContent = 'Verify & Sign In';
+                    verifyOtpBtn.disabled = false;
+                }
+            });
+
+            backToEmailBtn.addEventListener('click', () => {
+                step1Div.style.display = 'block';
+                step2Div.style.display = 'none';
+            });
+        }
+
+        // Auth Helper Functions
+        async function checkUserState() {
+            try {
+                const user = await getCurrentUser();
+                currentUser = user;
+                loginBtn.textContent = "Sign Out";
+                loginBtn.classList.add("logged-in");
+            } catch (err) {
+                console.log("Not signed in");
+                currentUser = null;
+                loginBtn.textContent = "Login";
+                loginBtn.classList.remove("logged-in");
+            }
+        }
+
+        async function getAuthHeader() {
+            if (!currentUser) return {};
+            try {
+                const session = await fetchAuthSession();
+                const token = session.tokens?.idToken?.toString();
+                return token ? { "Authorization": token } : {};
+            } catch (e) {
+                console.error("Error fetching auth session", e);
+                return {};
+            }
+        }
+
+        function resetModal() {
+            step1Div.style.display = "block";
+            step2Div.style.display = "none";
+            emailInput.value = "";
+            otpInput.value = "";
+            modalTitle.textContent = "Sign In";
         }
 
         async function loadMessages() {
             try {
-                const response = await fetch('/api/chat');
+                const headers = await getAuthHeader();
+                const response = await fetch('/api/chat', { headers });
                 if (!response.ok) throw new Error('Failed to load messages');
 
                 const data = await response.json();
                 messagesContainer.innerHTML = '';
 
-                data.messages.forEach(message => {
-                    displayMessage(message.role, message.content[0].text, false);
-                });
+                if (data.messages && Array.isArray(data.messages)) {
+                    data.messages.forEach(message => {
+                        const content = message.content && message.content[0] ? message.content[0].text : "";
+                        if (content) {
+                            displayMessage(message.role, content, false);
+                        }
+                    });
+                }
 
                 scrollToBottom();
                 // Reload suggestions after loading messages
@@ -790,11 +1076,14 @@
             showTypingIndicator();
 
             try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...(await getAuthHeader())
+                };
+
                 const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: headers,
                     body: JSON.stringify({ prompt: message })
                 });
 

@@ -2,23 +2,25 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from strands.agent.conversation_manager import SlidingWindowConversationManager
-from strands import Agent, tool
+from strands import Agent
 from strands.models import BedrockModel
 from strands.session.s3_session_manager import S3SessionManager
-from strands_tools import retrieve
 import boto3
 import json
 import logging
-import asyncio
 import os
 import uuid
 import uvicorn
 import re
+try:
+    from strands.models.openai import OpenAIModel
+    OPENAI_AVAILABLE = True
+except ModuleNotFoundError:
+    OPENAI_AVAILABLE = False
+    OpenAIModel = None
+
+# Import all tools from the tools module
 from tools import ALL_TOOLS
-from auth import verify_cognito_token
-
-
-
 
 realtor_team_name="Monika Realty Team"
 realtor_name="Monika Trivedi"
@@ -26,7 +28,6 @@ realtor_email="monika@monikarealty.com"
 realtor_phone="510-468-2232"
 realltor_dre_number="206536433"
 realter_website="https://www.monikarealty.com"
-area_expertise="San Francisco Bay Area"
 # Re-use boto session across invocations
 boto_session = boto3.Session()
 state_bucket_name = os.environ.get("STATE_BUCKET", "")
@@ -40,68 +41,44 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 model_id = os.environ.get("MODEL_ID", "")
+if model_id == "":
+    raise ValueError("MODEL_ID environment variable is not set.")
+llm_as_a_judge_model_id = os.environ.get("LLM_AS_A_JUDGE_MODEL_ID", "us.amazon.nova-pro-v1:0")
+
 bedrock_model = BedrockModel(
     model_id=model_id,
     # Add Guardrails here
 )
+llm_as_a_judge_model = None
 
-current_agent: Agent | None = None
+
 conversation_manager = SlidingWindowConversationManager(
     window_size=10,  # Maximum number of messages to keep
     should_truncate_results=True, # Enable truncating the tool result when a message is too large for the model's context window 
 )
 SYSTEM_PROMPT = f"""
-You are a knowledgeable realtor. 
-You  a digital representative of {realtor_name} their dre id is{realltor_dre_number}
+You are a digital avatar representative of {realtor_name} their dre id is{realltor_dre_number}
 and their website is {realter_website}, and their email is {realtor_email} and their phone is {realtor_phone}.
-Answering quesions as a realtor in California. {realtor_name} is is experty in {area_expertise}
-You answer questions about properoties currently available for sale.
-You have access to following tools:
-1. retrieve: get information from the knowledge base regarding {realtor_name}'s services.
-2. save_unanswered_question: save unanswered questions in the DB for future reference.
-3. capture_visitor_info: capture visitor information for future reference. in the DB
-4. search_properties: search for sale property information from using the listings api.
-5. add_property_info_to_db: add property information to the DB for future reference.
-6. get_property_info_from_db: get property information from the DB using property id or address.
-7. search_properties_by_location_from_db: search properties by location or city name or zip code from the DB.
-8. search_web: search Google for real-time information.
-
-Use search_web tool when you need current information about:
-   - Neighborhoods and local amenities
-   - School ratings and quality
-   - Crime rates and safety statistics
-   - Market trends and property values
-   - Local attractions, restaurants, and shopping
-   - Transportation and commute times
-   - Any other real-time information not in the knowledge base
-
-Follow below order when looking for listed property information:
-1. First look for property  information in the database using the tools:
- a. if searching by address or property id use get_property_info_from_db tool.
- b. if searching by city name zip code or location use search_properties_by_location_from_db tool.
-2. If not found in the database, use either search_properties.
-3. Add the information to the database using the add_property_info_to_db tool if not found in the database for future reference.
-
-If you cannot find the information you need to answer a question factually, let the user know that you don't have that specific information 
+Answering quesions as a realtor in California.
+You answer questions about properoties available for sale in a given area.
+by  looking up the information about the properties in the knowledge base.
+ 
+if You cannot find the information you need, you can say you don't have knowledge of the properties
 and add the question to the database for future reference using the save_unanswered_question tool.
 Let the user know that you've added the question to the database for future review and to comeback for an answer and 
 ask for a contact information and capture the information using the capture_visitor_info tool.
-
 After a brief interaction, gently ask for a contact information and capture the information using the capture_visitor_info tool.
 Only answer questions about the properties based on the information you get from the tools. Do not make up information.
 
-You should answer questions about {realtor_name}'s services for current or perspective clients. You can get that information using 
-retrive tool or search_web tool.
-You are humorous in your answers when appropriate. Keep the asnwers as brief as possible and concise.
+You should answer questions about {realtor_name}'s services for current or perspective clients.
+You are humorous in your answers when appropriate. Keep the asnwer as brief as possible and concise.
 No need to provide the whole story. Do not be verbose. Be brief and to the point.
 
-When searching for information via a tool, tell the user you are "trying to get the information".
+When searching for information via a tool, tell the user you are "trying to get the information", and then use the tool to retrieve it.
 """
 app = FastAPI()
 
-
 def session(id: str) -> Agent:
-    
     session_manager = S3SessionManager(
         boto_session=boto_session,
         bucket=state_bucket_name,
@@ -120,28 +97,52 @@ class ChatRequest(BaseModel):
 
 
 
+async def rate_response_with_llm_as_a_judge(prompt: str, response: str, session_id: str) -> dict | None:
+    if llm_as_a_judge_model is None:
+        logger.warning("LLM as a judge model unavailable; skipping response rating.")
+        return None
+    judge_system_prompt = f"""You are a quality control agent. Rate the following response against the user's prompt on a scale of 1-10.
+    Consider:
+    - Relevance to the prompt
+    - Clarity and conciseness
+    - Accuracy and helpfulness
+    - Tone and professionalism
+    Provide your rating as a JSON object with this exact format:
+    {{"rating": <number between 1-10>, "feedback": "<brief explanation>"}}
+    """
+    # Don't use a session manager for the judge agent - it's a one-off rating and doesn't need conversation history
+    # This avoids inheriting tool use/result blocks from the main conversation
+    judge_agent = Agent(
+        model=llm_as_a_judge_model,
+        system_prompt=judge_system_prompt,
+        tools=[],  # Explicitly set empty tools list to avoid tool-related errors
+    )
+    rating_response = ""
+    async for event in judge_agent.stream_async(f"{prompt}\n\nResponse: {response}"):
+        if "data" in event:
+            rating_response += event["data"]
+    
+    logger.info(f"Rating response: {rating_response}")
+    json_match = re.search(r'\{.*\}', rating_response, re.DOTALL)
+    if not json_match:
+        return None
+    return json.loads(json_match.group())
+
+async def generate_bedrock_response(agent: Agent, prompt: str) -> str:
+    """
+    Generate a complete response from the agent for the given prompt.
+    This function collects all streaming chunks into a single response.
+    """
+    full_response = ""
+    async for event in agent.stream_async(prompt):
+        if "data" in event:
+            full_response += event["data"]
+    return full_response
+
 @app.post('/api/chat')
 async def chat(chat_request: ChatRequest, request: Request):
-    # Check for authentication
-    auth_header = request.headers.get('Authorization')
-    user_id = None
-    if auth_header:
-        claims = verify_cognito_token(auth_header)
-        if claims:
-            user_id = claims.get('sub')
-
-    # Determine session_id
-    cookie_session_id = request.cookies.get("session_id")
-    if user_id:
-        session_id = user_id
-        # Simple merge logic: If anonymous session exists, we should ideally merge.
-        # For now, we switch context. (Full merge requires deep Agent API knowledge)
-        if cookie_session_id and cookie_session_id != user_id:
-             logger.info(f"Switching from anon session {cookie_session_id} to user session {user_id}")
-             # TODO: Implement message merging: user_agent.history += anon_agent.history
-    else:
-        session_id = cookie_session_id or str(uuid.uuid4())
-    
+    session_id: str = request.cookies.get("session_id", str(uuid.uuid4()))
+    logger.debug(f"Session ID: {session_id}")    
     agent = session(session_id)
     global current_agent
     current_agent = agent  # Store the current agent for use in tools
@@ -154,9 +155,46 @@ async def chat(chat_request: ChatRequest, request: Request):
 
 async def generate(agent: Agent, session_id: str, prompt: str, request: Request):
     try:
-        async for event in agent.stream_async(prompt):
-            if "data" in event:
-                yield f"data: {json.dumps(event['data'])}\n\n"
+        full_response = await generate_bedrock_response(agent, prompt)
+        logger.info(f"Initial response generated: {full_response[:100]}...")
+
+        max_retries = 2
+        retry_count = 0
+        approved_response = full_response
+        
+        while retry_count < max_retries:
+            rating_data = await rate_response_with_llm_as_a_judge(prompt, approved_response, session_id)
+            if not rating_data:
+                logger.warning("Could not parse rating response, using original response")
+                break
+
+            rating = rating_data.get("rating", 10)
+            feedback = rating_data.get("feedback", "")
+            
+            logger.info(f"Response rating: {rating}/10 - {feedback}")
+            
+            if rating >= 8:
+                logger.info("Response approved by quality control")
+                break
+            else:
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Response rated {rating}/10, regenerating (attempt {retry_count + 1})")
+                    regeneration_prompt = f"{prompt}\n\nPlease improve your previous response. Quality feedback: {feedback}"
+                    approved_response = await generate_bedrock_response(agent, regeneration_prompt)
+                else:
+                    logger.warning(f"Max retries reached. Using last response with rating {rating}/10")
+                    break
+        
+        # Stream the approved response to the client
+        # Split into chunks for streaming effect
+        chunk_size = 50
+        for i in range(0, len(approved_response), chunk_size):
+            chunk = approved_response[i:i + chunk_size]
+            yield f"data: {json.dumps(chunk)}\n\n"
+        
+        logger.info("Response streaming complete")
+        
     except Exception as e:
         logger.error(f"Error in generate: {str(e)}")
         error_message = json.dumps({"error": str(e)})
@@ -164,15 +202,7 @@ async def generate(agent: Agent, session_id: str, prompt: str, request: Request)
 
 @app.get('/api/chat')
 def chat_get(request: Request):
-    # Check for authentication
-    auth_header = request.headers.get('Authorization')
-    user_id = None
-    if auth_header:
-        claims = verify_cognito_token(auth_header)
-        if claims:
-            user_id = claims.get('sub')
-            
-    session_id = user_id if user_id else request.cookies.get("session_id", str(uuid.uuid4()))
+    session_id = request.cookies.get("session_id", str(uuid.uuid4()))
     agent = session(session_id)
 
     # Filter messages to only include first text content
@@ -198,20 +228,13 @@ def chat_get(request: Request):
     return response
 
 
+
 @app.get('/api/suggestions')
 async def get_suggestions(request: Request):
     """
     Generate 4 contextually relevant question suggestions based on the conversation history.
     """
-    # Check for authentication
-    auth_header = request.headers.get('Authorization')
-    user_id = None
-    if auth_header:
-        claims = verify_cognito_token(auth_header)
-        if claims:
-            user_id = claims.get('sub')
-            
-    session_id = user_id if user_id else request.cookies.get("session_id", str(uuid.uuid4()))
+    session_id = request.cookies.get("session_id", str(uuid.uuid4()))
     agent = session(session_id)
     
     # Build context from conversation history
@@ -231,18 +254,18 @@ async def get_suggestions(request: Request):
 
 {conversation_context}
 
-Generate exactly 4 relevant and short follow-up questions that the user might want to ask about properties for sale. 
+Generate exactly 4 relevant follow-up questions that the user might want to ask about properties for sale. 
 These should be natural questions a potential home buyer would ask.
-Return ONLY the 4 questions as a JSON array, no other information necessary. Format: ["question 1", "question 2", "question 3", "question 4"]"""
+Return ONLY the 3 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3"]"""
     else:
-        suggestion_prompt = """Generate exactly 4 relevant and short common questions that someone looking for properties might ask a realtor.
-Return ONLY the 4 questions as a JSON array, no other information necessary. Format: ["question 1", "question 2", "question 3", "question 4"]"""
+        suggestion_prompt = """Generate exactly 4 common questions that someone looking for properties might ask a realtor.
+Return ONLY the 3 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3"]"""
     
     try:
         # Use an Agent with the model for simple generation
         suggestion_agent = Agent(
             model=bedrock_model,
-            system_prompt="You are a helpful real estate advising assistant that generates relevant real estate questions. Always respond with valid JSON only."
+            system_prompt="You are a helpful assistant that generates relevant real estate questions. Always respond with valid JSON only."
         )
         response_text = ""
         async for event in suggestion_agent.stream_async(suggestion_prompt):
@@ -255,15 +278,14 @@ Return ONLY the 4 questions as a JSON array, no other information necessary. For
         json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
         if json_match:
             suggestions = json.loads(json_match.group())
-            # Ensure we have exactly 4 suggestions
-            suggestions = suggestions[:4]
+            # Ensure we have exactly 3 suggestions
+            suggestions = suggestions[:3]
         else:
             # Fallback suggestions if parsing fails
             suggestions = [
                 "What properties are currently available in the area?",
                 "Can you tell me about the price range of homes?",
-                "What are the features of properties in this neighborhood?",
-                "How is the local school district?"
+                "What are the features of properties in this neighborhood?"
             ]
         
         response = Response(
@@ -279,8 +301,7 @@ Return ONLY the 4 questions as a JSON array, no other information necessary. For
         default_suggestions = [
             "What properties are currently available?",
             "Can you tell me about pricing in the area?",
-            "What amenities do the properties have?",
-            "How are the local schools?"
+            "What amenities do the properties have?"
         ]
         response = Response(
             content=json.dumps({"suggestions": default_suggestions}),

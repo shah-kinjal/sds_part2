@@ -26,6 +26,8 @@ class Backend(Construct):
                  rental_cast_api_key: str | None = None, # Rental cast API key
                  rentcast_api_url: str | None = None, # Rentcast API URL
                  rental_cast_api_url: str | None = None, # Rental cast API URL
+                 user_pool_id: str | None = None,
+                 user_pool_client_id: str | None = None,
                  ) -> None:
         super().__init__(scope, id)
 
@@ -54,7 +56,7 @@ class Backend(Construct):
                                         image=_lambda.Runtime.PYTHON_3_13.bundling_image,
                                         command=[
                                             'bash', '-c',
-                                            'pip install uv && uv export --frozen --no-dev --no-editable -o requirements.txt && pip install -r requirements.txt -t /asset-output && cp -r app/* /asset-output/'
+                                            'pip install . -t /asset-output && cp -r app/* /asset-output/'
                                         ],
                                         user='root',
                                         platform='linux/amd64',
@@ -84,6 +86,9 @@ class Backend(Construct):
                                     "PROPERTY_TTL_HOURS": os.environ.get("PROPERTY_TTL_HOURS", "12"),
                                     "SERPER_API_KEY": serper_api_key,
                                     "SERPER_URL": serper_url,
+                                    "USER_POOL_ID": user_pool_id or "",
+                                    "USER_POOL_CLIENT_ID": user_pool_client_id or "",
+                                    "REGION": Stack.of(self).region,
                                 },
                               memory_size=1024,
                              )
