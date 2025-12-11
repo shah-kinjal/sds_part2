@@ -118,7 +118,16 @@ function handler(event) {
                                               )
         
         _ = s3deploy.BucketDeployment(self, 'DeployFrontend',
-                                      sources=[s3deploy.Source.asset('./virtual_realtor/frontend/src')],
+                                      sources=[s3deploy.Source.asset('./virtual_realtor/frontend/app', bundling=BundlingOptions(
+                                          bundling_file_access=BundlingFileAccess.VOLUME_COPY,
+                                          image=DockerImage.from_registry('node:22'),
+                                          user="root",
+                                          command=[
+                                              "sh", "-c",
+                                              "npm ci && npm run build && cp -r build/* /asset-output/"
+                                          ],
+                                          working_directory="/asset-input",
+                                      ))],
                                       destination_bucket=frontend_bucket,
                                       distribution=distribution,
                                       distribution_paths=['/'],

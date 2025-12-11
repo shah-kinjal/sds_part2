@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+    --color-accent-primary: #f4b942;
+    --color-accent-secondary: #ffd978;
+    --color-accent-tertiary: #e85d75;
+    --color-accent-quaternary: #ff7a93;
+    
+    --color-bg-body-start: #ffffff;
+    --color-bg-body-end: #fef9f3;
+    
+    --color-msg-assistant-start: #fff4d6;
+    --color-msg-assistant-end: #ffe9a8;
+    
+    --color-msg-user-start: #ffe5ea;
+    --color-msg-user-end: #ffc9d4;
+    
+    --color-border-primary: #f4b942;
+    --color-border-secondary: #e85d75;
+}
+
+:root {
+    --bg-body-start: #ffffff;
+    --bg-body-end: #fef9f3;
+    --bg-container: #ffffff;
+    --bg-suggestions: #ffffff;
+    --text-primary: #2d3436;
+    --text-secondary: rgba(45, 52, 54, 0.8);
+    --text-muted: rgba(45, 52, 54, 0.7);
+    --accent-primary: #f4b942;
+    --accent-secondary: #ffd978;
+    --accent-tertiary: #e85d75;
+    --accent-quaternary: #ff7a93;
+    --shadow-color: rgba(244, 185, 66, 0.15);
+    --input-bg: #ffffff;
+    --typing-dot: #f4b942;
+}
+
+.dark {
+    --bg-body-start: #121212;
+    --bg-body-end: #1e1e1e;
+    --bg-container: #252525;
+    --bg-suggestions: #252525;
+    --text-primary: #e0e0e0;
+    --text-secondary: rgba(224, 224, 224, 0.8);
+    --text-muted: rgba(224, 224, 224, 0.6);
+    --accent-primary: #b58930;
+    --accent-secondary: #8c6a24;
+    --accent-tertiary: #e85d75;
+    --accent-quaternary: #c03955;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+    --input-bg: #2c2c2c;
+    --typing-dot: #b58930;
+}
+
+body {
+    background: linear-gradient(135deg, var(--bg-body-start) 0%, var(--bg-body-end) 100%);
+    min-height: 100vh;
+    color: var(--text-primary);
+    transition: background 0.3s ease, color 0.3s ease;
+}
