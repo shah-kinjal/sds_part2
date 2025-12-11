@@ -788,27 +788,28 @@
         <div class="modal">
             <button class="close-modal" id="close-modal">&times;</button>
             <h2 id="modal-title">Sign In</h2>
-            <div id="auth-step-1">
+            <form id="auth-step-1">
                 <div class="modal-input-group">
                     <label for="email-input">Email Address</label>
-                    <input type="email" id="email-input" placeholder="Enter your email">
+                    <input type="email" id="email-input" name="email" autocomplete="email"
+                        placeholder="Enter your email">
                 </div>
                 <div class="modal-buttons">
-                    <button class="btn-primary" id="request-otp-btn">Send OTP</button>
+                    <button type="submit" class="btn-primary" id="request-otp-btn">Send OTP</button>
                 </div>
-            </div>
-            <div id="auth-step-2" style="display: none;">
+            </form>
+            <form id="auth-step-2" style="display: none;">
                 <p style="margin-bottom: 15px; font-size: 14px; text-align: center;">Enter the code sent to your email.
                 </p>
                 <div class="modal-input-group">
                     <label for="otp-input">Verification Code</label>
-                    <input type="text" id="otp-input" placeholder="123456">
+                    <input type="text" id="otp-input" name="code" autocomplete="one-time-code" placeholder="123456">
                 </div>
                 <div class="modal-buttons">
-                    <button class="btn-secondary" id="back-to-email-btn">Back</button>
-                    <button class="btn-primary" id="verify-otp-btn">Verify & Sign In</button>
+                    <button type="button" class="btn-secondary" id="back-to-email-btn">Back</button>
+                    <button type="submit" class="btn-primary" id="verify-otp-btn">Verify & Sign In</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -952,7 +953,8 @@
                 loginModal.classList.remove('active');
             });
 
-            requestOtpBtn.addEventListener('click', async () => {
+            step1Div.addEventListener('submit', async (e) => {
+                e.preventDefault();
                 const email = emailInput.value;
                 if (!email) return alert('Please enter email');
                 try {
@@ -971,7 +973,8 @@
                 }
             });
 
-            verifyOtpBtn.addEventListener('click', async () => {
+            step2Div.addEventListener('submit', async (e) => {
+                e.preventDefault();
                 const code = otpInput.value;
                 if (!code) return alert('Enter code');
                 try {
