@@ -19,6 +19,17 @@
         loadSuggestions();
     });
 
+    $effect(() => {
+        if (appState.isAuthenticated) {
+            console.log("User authenticated, reloading messages...");
+            // Clear current messages to avoid duplication/confusion before reload
+            // Or keep them? Better to reload fresh from server which should have merged state.
+            messages = [];
+            loadMessages();
+            loadSuggestions(); // Suggestions might be personalized
+        }
+    });
+
     async function getAuthHeader(): Promise<HeadersInit> {
         try {
             const session = await fetchAuthSession();
@@ -170,6 +181,20 @@
         }
     }
 
+    async function handleSignOut() {
+        try {
+            const { signOutUser } = await import("$lib/auth");
+            await signOutUser();
+            appState.setAuthenticated(false);
+            messages = []; // Clear user messages on sign out
+            // Optionally reload anonymous session messages if you want to support that flow,
+            // but for now clearing is safer/cleaner.
+            loadSuggestions(); // Reload generic suggestions
+        } catch (e) {
+            console.error("Sign out failed", e);
+        }
+    }
+
     function scrollToBottom() {
         setTimeout(() => {
             if (messagesContainer) {
@@ -199,7 +224,13 @@
         </div>
         <button
             class="text-[#2d3436] text-sm font-semibold hover:text-white transition-colors bg-white/20 p-2 rounded-lg"
-            onclick={() => (appState.isLoginModalOpen = true)}
+            onclick={() => {
+                if (appState.isAuthenticated) {
+                    handleSignOut();
+                } else {
+                    appState.isLoginModalOpen = true;
+                }
+            }}
         >
             {appState.isAuthenticated ? "Sign Out" : "Login"}
         </button>

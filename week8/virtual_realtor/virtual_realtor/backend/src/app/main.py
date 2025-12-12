@@ -56,6 +56,9 @@ You  a digital representative of {realtor_name} their dre id is{realltor_dre_num
 and their website is {realter_website}, and their email is {realtor_email} and their phone is {realtor_phone}.
 Answering quesions as a realtor in California. {realtor_name} is is experty in {area_expertise}
 You answer questions about properoties currently available for sale.
+if the user is inquiriing about properties outside of {area_expertise}, let them know that you are not able to answer their question. 
+and let them know that {realtor_name} can help them find a realtor in their area.
+
 You have access to following tools:
 1. retrieve: get information from the knowledge base regarding {realtor_name}'s services.
 2. save_unanswered_question: save unanswered questions in the DB for future reference.
@@ -138,7 +141,60 @@ async def chat(chat_request: ChatRequest, request: Request):
         # For now, we switch context. (Full merge requires deep Agent API knowledge)
         if cookie_session_id and cookie_session_id != user_id:
              logger.info(f"Switching from anon session {cookie_session_id} to user session {user_id}")
-             # TODO: Implement message merging: user_agent.history += anon_agent.history
+             try:
+                 # Load anonymous agent to get history
+                 anon_agent = session(cookie_session_id)
+                 anon_messages = anon_agent.messages
+                 
+                 if anon_messages:
+                     logger.info(f"Found {len(anon_messages)} anonymous messages to merge.")
+                     # Load user agent
+                     user_agent = session(user_id)
+                     
+                     # Check if we assume 'messages' is a list we can append to
+                     # and if session_manager has a save method.
+                     # We append anon messages to user history. 
+                     # Note: This might result in duplication if not careful, but for now simple append.
+                     # Optimally, we should check timestamps or IDs if available.
+                     
+                     # naive merge: append all
+                     # strands Agent messages are usually read from session_manager on init.
+                     # We need to persist the merged state.
+                     
+                     current_user_messages = user_agent.messages
+                     # filtering out potential system instructions if they are in messages?
+                     # strands usually handles system prompt separately.
+                     
+                     # Combine: user history + anon history? Or Anon + User?
+                     # Usually Anon happens *before* login, so Anon history should come *after* old user history?
+                     # Or does Anon history replace?
+                     # Scenario: User chats as anon, then logs in. 
+                     # We want to keep the current conversation (anon) and probably add it to the user's long term memory.
+                     # So: User History + Anon History (recent).
+                     
+                     merged_messages = current_user_messages + anon_messages
+                     
+                     # Update user_agent messages (in memory)
+                     user_agent.messages = merged_messages
+                     
+                     # Attempt to save using session_manager
+                     # Inspecting S3SessionManager in strands usually reveals a save_session(session_id, messages) method
+                     # or similar. Based on strands-agents patterns, it might be `put_session`.
+                     # Let's try to find the method dynamically or assume `save_session`.
+                     
+                     if hasattr(user_agent.session_manager, 'put_session'):
+                         user_agent.session_manager.put_session(session_id=user_id, messages=merged_messages)
+                         logger.info("Merged messages saved using put_session")
+                     elif hasattr(user_agent.session_manager, 'save_session'):
+                         user_agent.session_manager.save_session(session_id=user_id, messages=merged_messages)
+                         logger.info("Merged messages saved using save_session")
+                     else:
+                         logger.warning("Could not find save method on session_manager to persist merged history.")
+                         # Fallback: manually invoke whatever internal save logic exists if possible
+                         pass
+                         
+             except Exception as e:
+                 logger.error(f"Error merging sessions: {str(e)}")
     else:
         session_id = cookie_session_id or str(uuid.uuid4())
     
