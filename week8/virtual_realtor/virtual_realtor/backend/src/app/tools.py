@@ -10,11 +10,15 @@ from strands_tools import retrieve
 import json
 import logging
 from questions import QuestionManager
+from preferences import PreferencesManager
 
 logger = logging.getLogger(__name__)
 
 # Initialize the question manager
 question_manager = QuestionManager()
+
+# Initialize the preferences manager
+preferences_manager = PreferencesManager()
 
 
 @tool
@@ -211,6 +215,30 @@ def search_web(query: str, num_results: int = 5) -> str:
     return question_manager.search_web(query=query, num_results=num_results)
 
 
+@tool
+def get_user_preferences(user_id: str) -> str:
+    """
+    Retrieve user's property search preferences from the database.
+    Use this when generating personalized property suggestions for the user.
+    
+    Args:
+        user_id: The user's Cognito sub (user ID)
+        
+    Returns:
+        JSON string containing user preferences (price range, zip codes, bedrooms, bathrooms, sqft, property type)
+        or a message if no preferences are found
+    """
+    try:
+        preferences = preferences_manager.get_preferences(user_id)
+        if preferences:
+            return json.dumps(preferences, indent=2)
+        else:
+            return json.dumps({"message": "No preferences found for this user"})
+    except Exception as e:
+        logger.error(f"Error retrieving user preferences: {str(e)}")
+        return json.dumps({"error": f"Failed to retrieve preferences: {str(e)}"})
+
+
 # Export all tools as a list for easy import
 ALL_TOOLS = [
     retrieve,
@@ -220,5 +248,6 @@ ALL_TOOLS = [
     add_property_info_to_db,
     get_property_info_from_db,
     search_properties_by_location_from_db,
-    search_web
+    search_web,
+    get_user_preferences
 ]

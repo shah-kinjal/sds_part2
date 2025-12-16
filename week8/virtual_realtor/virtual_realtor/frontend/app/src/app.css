@@ -1,61 +1,103 @@
-@import "tailwindcss";
-
-@theme {
-    --color-accent-primary: #f4b942;
-    --color-accent-secondary: #ffd978;
-    --color-accent-tertiary: #e85d75;
-    --color-accent-quaternary: #ff7a93;
-    
-    --color-bg-body-start: #ffffff;
-    --color-bg-body-end: #fef9f3;
-    
-    --color-msg-assistant-start: #fff4d6;
-    --color-msg-assistant-end: #ffe9a8;
-    
-    --color-msg-user-start: #ffe5ea;
-    --color-msg-user-end: #ffc9d4;
-    
-    --color-border-primary: #f4b942;
-    --color-border-secondary: #e85d75;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-    --bg-body-start: #ffffff;
-    --bg-body-end: #fef9f3;
-    --bg-container: #ffffff;
-    --bg-suggestions: #ffffff;
-    --text-primary: #2d3436;
-    --text-secondary: rgba(45, 52, 54, 0.8);
-    --text-muted: rgba(45, 52, 54, 0.7);
-    --accent-primary: #f4b942;
-    --accent-secondary: #ffd978;
-    --accent-tertiary: #e85d75;
-    --accent-quaternary: #ff7a93;
-    --shadow-color: rgba(244, 185, 66, 0.15);
-    --input-bg: #ffffff;
-    --typing-dot: #f4b942;
-}
-
-.dark {
-    --bg-body-start: #121212;
-    --bg-body-end: #1e1e1e;
-    --bg-container: #252525;
-    --bg-suggestions: #252525;
-    --text-primary: #e0e0e0;
-    --text-secondary: rgba(224, 224, 224, 0.8);
-    --text-muted: rgba(224, 224, 224, 0.6);
-    --accent-primary: #b58930;
-    --accent-secondary: #8c6a24;
-    --accent-tertiary: #e85d75;
-    --accent-quaternary: #c03955;
-    --shadow-color: rgba(0, 0, 0, 0.3);
-    --input-bg: #2c2c2c;
-    --typing-dot: #b58930;
+	/* Clean Light Theme - No Green */
+	
+	/* Primary accent - Neutral gray/black */
+	--color-accent-primary: #2d3436;
+	--color-accent-secondary: #4a5258;
+	
+	/* Message bubbles */
+	--color-msg-user-start: #f4f4f4;
+	--color-msg-user-end: #f4f4f4;
+	--color-msg-assistant-start: #ffffff;
+	--color-msg-assistant-end: #ffffff;
+	
+	/* Backgrounds - Light theme */
+	--bg-body: #ffffff;
+	--bg-container: #f9f9f9;
+	--bg-sidebar: #f9f9f9;
+	--bg-card: #ffffff;
+	
+	/* Text colors */
+	--text-primary: #2d3436;
+	--text-secondary: #565869;
+	--text-muted: #8e8ea0;
+	
+	/* Borders */
+	--color-border-primary: #d9d9e3;
+	--color-border-secondary: #e5e5e5;
+	
+	/* Input backgrounds */
+	--input-bg: #f4f4f4;
+	
+	/* Typing indicator dots */
+	--typing-dot: #2d3436;
+	
+	/* Shadows */
+	--shadow-color: rgba(0, 0, 0, 0.08);
 }
 
 body {
-    background: linear-gradient(135deg, var(--bg-body-start) 0%, var(--bg-body-end) 100%);
-    min-height: 100vh;
-    color: var(--text-primary);
-    transition: background 0.3s ease, color 0.3s ease;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	background-color: var(--bg-body);
+	color: var(--text-primary);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling for webkit browsers */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #d9d9e3;
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #c0c0c0;
+}
+
+/* Focus states */
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+	outline: 2px solid var(--color-accent-primary);
+	outline-offset: 2px;
+}
+
+/* Selection color */
+::selection {
+	background-color: var(--color-accent-primary);
+	color: white;
+}
+
+/* Smooth animations */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.animate-fade-in {
+	animation: fadeIn 0.3s ease-out;
+}
+
+button {
+	font-family: inherit;
 }

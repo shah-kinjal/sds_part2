@@ -1,6 +1,8 @@
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, Field, field_validator
+from typing import Optional, List
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands import Agent, tool
 from strands.models import BedrockModel
@@ -14,8 +16,9 @@ import os
 import uuid
 import uvicorn
 import re
-from tools import ALL_TOOLS
+from tools import ALL_TOOLS, search_properties, get_property_info_from_db, search_properties_by_location_from_db, get_user_preferences
 from auth import verify_cognito_token
+from preferences import PreferencesManager, UserPreferences, PriceRange, BedroomRange, BathroomRange, SqftRange
 
 
 
@@ -32,7 +35,7 @@ boto_session = boto3.Session()
 state_bucket_name = os.environ.get("STATE_BUCKET", "")
 if state_bucket_name == "":
     raise ValueError("BUCKET_NAME environment variable is not set.")
-logging.getLogger("strands").setLevel(logging.DEBUG)
+logging.getLogger("strands").setLevel(logging.WARNING)
 logging.basicConfig(
     format="%(levelname)s | %(name)s | %(message)s", 
     handlers=[logging.StreamHandler()]
@@ -101,6 +104,16 @@ No need to provide the whole story. Do not be verbose. Be brief and to the point
 When searching for information via a tool, tell the user you are "trying to get the information".
 """
 app = FastAPI()
+
+# Add CORS middleware to allow Authorization header
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 
 def session(id: str) -> Agent:
@@ -344,6 +357,342 @@ Return ONLY the 4 questions as a JSON array, no other information necessary. For
         )
         response.set_cookie(key="session_id", value=session_id)
         return response
+
+@app.get('/api/user/preferences')
+def get_user_preferences(request: Request):
+    """
+    Get user's property search preferences.
+    Requires authentication.
+    """
+    # Check for authentication
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = claims.get('sub')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token: missing sub claim")
+    
+    try:
+        prefs_manager = PreferencesManager()
+        preferences = prefs_manager.get_preferences(user_id)
+        
+        if preferences:
+            return Response(
+                content=json.dumps(preferences),
+                media_type="application/json",
+            )
+        else:
+            # No preferences found
+            return Response(
+                content=json.dumps({
+                    "error": "Preferences not found",
+                    "userId": user_id,
+                    "hasPreferences": False
+                }),
+                media_type="application/json",
+                status_code=404
+            )
+    
+    except Exception as e:
+        logger.error(f"Error retrieving preferences: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve preferences")
+
+
+class UserPreferencesRequest(BaseModel):
+    """Request model for updating preferences (userId comes from auth token)"""
+    email: Optional[str] = None
+    priceRange: Optional[PriceRange] = None
+    zipCodes: List[str] = Field(default_factory=list)
+    bedrooms: Optional[BedroomRange] = None
+    bathrooms: Optional[BathroomRange] = None
+    sqft: Optional[SqftRange] = None
+    propertyType: Optional[str] = None
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v:
+            # Basic email validation
+            if '@' not in v or '.' not in v.split('@')[1]:
+                raise ValueError("Invalid email format")
+        return v
+
+    @field_validator('zipCodes')
+    @classmethod
+    def validate_zipcodes(cls, v: List[str]) -> List[str]:
+        if len(v) > 3:
+            raise ValueError("Maximum 3 zip codes allowed")
+        for zipcode in v:
+            if not zipcode.isdigit() or len(zipcode) != 5:
+                raise ValueError(f"Invalid zip code format: {zipcode}. Must be 5 digits.")
+        return v
+
+    @field_validator('propertyType')
+    @classmethod
+    def validate_property_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v:
+            valid_types = [
+                "Single Family",
+                "Condo",
+                "Townhouse",
+                "Manufactured",
+                "Multi-Family",
+                "Apartment",
+                "Land"
+            ]
+            if v not in valid_types:
+                raise ValueError(f"Invalid property type. Must be one of: {', '.join(valid_types)}")
+        return v
+
+
+@app.put('/api/user/preferences')
+async def update_user_preferences(prefs_request: UserPreferencesRequest, request: Request):
+    """
+    Create or update user's property search preferences.
+    Requires authentication.
+    """
+    # Check for authentication
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = claims.get('sub')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token: missing sub claim")
+    
+    try:
+        logger.info(f"Saving preferences for user: {user_id}")
+        logger.debug(f"Preferences data: {prefs_request.model_dump()}")
+        
+        # Create UserPreferences with userId from token
+        preferences = UserPreferences(
+            userId=user_id,
+            **prefs_request.model_dump()
+        )
+        
+        # Save preferences
+        prefs_manager = PreferencesManager()
+        result = prefs_manager.save_preferences(preferences)
+        
+        logger.info(f"Preferences saved successfully for user: {user_id}")
+        
+        return Response(
+            content=json.dumps(result),
+            media_type="application/json",
+        )
+    
+    except ValidationError as e:
+        # Return validation errors
+        error_details = []
+        for error in e.errors():
+            field = '.'.join(str(x) for x in error['loc'])
+            message = error['msg']
+            error_details.append(f"{field}: {message}")
+        
+        logger.warning(f"Validation failed for user {user_id}: {error_details}")
+        
+        return Response(
+            content=json.dumps({
+                "error": "Validation failed",
+                "details": error_details
+            }),
+            media_type="application/json",
+            status_code=400
+        )
+    except Exception as e:
+        logger.error(f"Error saving preferences for user {user_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to save preferences: {str(e)}")
+
+
+@app.get('/api/property-suggestions')
+async def get_property_suggestions(request: Request):
+    """
+    Generate personalized property suggestions based on user preferences.
+    Requires authentication.
+    """
+    # Check for authentication
+    auth_header = request.headers.get('Authorization')
+    logger.info(f"Property suggestions request - Auth header present: {auth_header is not None}")
+    logger.info(f"Auth header preview: {auth_header[:50] if auth_header else 'None'}...")
+    
+    if not auth_header:
+        logger.warning("No Authorization header provided")
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        logger.warning(f"Token verification failed for header: {auth_header[:50]}...")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = claims.get('sub')
+    if not user_id:
+        logger.warning("Token missing sub claim")
+        raise HTTPException(status_code=401, detail="Invalid token: missing sub claim")
+    
+    logger.info(f"Property suggestions request authenticated for user: {user_id}")
+    
+    # Get limit from query params
+    limit = int(request.query_params.get('limit', '5'))
+    limit = min(limit, 5)  # Cap at 5
+    
+    try:
+        # Get user preferences
+        prefs_manager = PreferencesManager()
+        preferences = prefs_manager.get_preferences(user_id)
+        
+        if not preferences:
+            # No preferences set
+            return Response(
+                content=json.dumps({
+                    "suggestions": [],
+                    "count": 0,
+                    "hasPreferences": False,
+                    "message": "Please set your preferences to receive property suggestions"
+                }),
+                media_type="application/json",
+            )
+        
+        logger.info(f"Retrieved preferences for user {user_id}, searching for properties...")
+        
+        # Extract search criteria from preferences
+        zip_codes = preferences.get('zipCodes', [])
+        price_range = preferences.get('priceRange', {})
+        bedrooms = preferences.get('bedrooms', {})
+        bathrooms = preferences.get('bathrooms', {})
+        sqft = preferences.get('sqft', {})
+        property_type = preferences.get('propertyType')
+        
+        # Build search criteria text for Agent
+        criteria_text = f"""
+User's search preferences:
+- Zip codes: {', '.join(zip_codes) if zip_codes else 'Not specified'}
+- Price range: ${price_range.get('min', 'Any')} - ${price_range.get('max', 'Any')}
+- Bedrooms: {bedrooms.get('min', 'Any')} - {bedrooms.get('max', 'Any')}
+- Bathrooms: {bathrooms.get('min', 'Any')} - {bathrooms.get('max', 'Any')}
+- Square feet: {sqft.get('min', 'Any')} - {sqft.get('max', 'Any')}
+- Property type: {property_type or 'Any'}
+"""
+        
+        # Create a simpler, faster suggestions prompt - no need to call get_user_preferences
+        SUGGESTIONS_SYSTEM_PROMPT = """You are a property suggestion assistant. 
+        Generate property suggestions as a JSON array.
+        Use the user's preferences to generate the suggestions.
+        you have a tool 'search_properties' that can be used to search for properties.
+        Use other context and user preferences to generate the suggestions.
+       Return ONLY a JSON array with this structure:
+
+[
+  {
+    "id": "property-id",
+    "address": "Full address",
+    "price": 750000,
+    "beds": 3,
+    "baths": 2.5,
+    "sqft": 1800,
+    "daysOnMarket": 15,
+    "source": "RentCast",
+    "sourceUrl": "https://www.zillow.com/homes/..."
+  }
+]
+
+CRITICAL: Return ONLY the JSON array, no other text."""
+
+        suggestions_agent = Agent(
+            model=bedrock_model,
+            system_prompt=SUGGESTIONS_SYSTEM_PROMPT,
+            tools=[search_properties]  # Only search tool - no get_user_preferences needed
+        )
+        
+        # Generate suggestions with criteria pre-loaded
+        prompt = f"{criteria_text}\n\nSearch for {limit} properties matching these criteria. Return results as JSON array only."
+        
+        response_text = ""
+        try:
+            async for event in suggestions_agent.stream_async(prompt):
+                if "data" in event:
+                    response_text += event["data"]
+        except Exception as agent_error:
+            logger.error(f"Agent error: {str(agent_error)}")
+            # Fallback to empty results
+            return Response(
+                content=json.dumps({
+                    "suggestions": [],
+                    "count": 0,
+                    "hasPreferences": True,
+                    "message": "Unable to generate suggestions at this time. Please try again."
+                }),
+                media_type="application/json",
+            )
+        
+        logger.info(f"Suggestions agent raw response length: {len(response_text)}")
+        logger.debug(f"Response preview: {response_text[:500]}...")
+        
+        # Parse JSON response
+        try:
+            # Extract JSON array from response (handle potential extra text)
+            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+            if json_match:
+                suggestions = json.loads(json_match.group())
+            else:
+                # Fallback: try parsing entire response
+                suggestions = json.loads(response_text)
+            
+            # Ensure we have a list
+            if not isinstance(suggestions, list):
+                logger.warning(f"Response is not a list: {type(suggestions)}")
+                suggestions = []
+            
+            # Limit suggestions
+            suggestions = suggestions[:limit]
+            
+            # Add/fix Zillow URLs
+            for suggestion in suggestions:
+                if 'sourceUrl' not in suggestion or not suggestion['sourceUrl'] or 'zillow.com' not in suggestion.get('sourceUrl', ''):
+                    address = suggestion.get('address', '')
+                    if address:
+                        url_address = address.replace(' ', '-').replace(',', '').replace('.', '')
+                        suggestion['sourceUrl'] = f"https://www.zillow.com/homes/{url_address}_rb/"
+                    else:
+                        suggestion['sourceUrl'] = "https://www.zillow.com"
+            
+            logger.info(f"Returning {len(suggestions)} property suggestions for user {user_id}")
+            
+            return Response(
+                content=json.dumps({
+                    "suggestions": suggestions,
+                    "count": len(suggestions),
+                    "hasPreferences": True
+                }),
+                media_type="application/json",
+            )
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse suggestions JSON: {str(e)}")
+            logger.error(f"Response was: {response_text[:1000]}")
+            # Return empty suggestions on parse error
+            return Response(
+                content=json.dumps({
+                    "suggestions": [],
+                    "count": 0,
+                    "hasPreferences": True,
+                    "error": "Unable to parse property suggestions"
+                }),
+                media_type="application/json",
+            )
+    
+    except Exception as e:
+        logger.error(f"Error generating property suggestions: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to generate suggestions")
+
 
 # Called by the Lambda Adapter to check liveness
 @app.get("/")

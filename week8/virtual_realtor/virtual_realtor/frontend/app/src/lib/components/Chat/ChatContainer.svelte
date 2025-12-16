@@ -22,11 +22,13 @@
     $effect(() => {
         if (appState.isAuthenticated) {
             console.log("User authenticated, reloading messages...");
-            // Clear current messages to avoid duplication/confusion before reload
-            // Or keep them? Better to reload fresh from server which should have merged state.
             messages = [];
             loadMessages();
-            loadSuggestions(); // Suggestions might be personalized
+            loadSuggestions();
+        } else {
+            // User logged out - clear messages
+            messages = [];
+            suggestions = [];
         }
     });
 
@@ -44,7 +46,6 @@
     async function loadMessages() {
         try {
             const headers = await getAuthHeader();
-            // @ts-ignore
             const res = await fetch(`${API_BASE}/api/chat`, { headers });
             if (res.ok) {
                 const data = await res.json();
@@ -65,8 +66,6 @@
 
     async function loadSuggestions() {
         try {
-            // @ts-ignore
-            // Suggestions API doesn't require auth strictly but uses it for context
             const headers = await getAuthHeader();
             const res = await fetch(`${API_BASE}/api/suggestions`, { headers });
             if (res.ok) {
@@ -93,7 +92,6 @@
                 ...(await getAuthHeader()),
             };
 
-            // @ts-ignore
             const response = await fetch(`${API_BASE}/api/chat`, {
                 method: "POST",
                 headers,
@@ -105,12 +103,9 @@
             const reader = response.body?.getReader();
             if (!reader) throw new Error("No reader");
 
-            // Create placeholder for assistant response
             let assistantContent = "";
-            // We append a temporary empty message
             let doneStream = false;
 
-            // Stream processing
             const decoder = new TextDecoder();
             while (!doneStream) {
                 const { done, value } = await reader.read();
@@ -128,7 +123,6 @@
                         if (dataStr === "[DONE]" || dataStr === "") continue;
 
                         try {
-                            // Parse JSON chunk or raw text
                             let textChunk = "";
                             try {
                                 textChunk = JSON.parse(dataStr);
@@ -138,10 +132,8 @@
 
                             assistantContent += textChunk;
 
-                            // Update the last message if it's assistant, or append new one
                             const lastMsg = messages[messages.length - 1];
                             if (lastMsg && lastMsg.role === "assistant") {
-                                // Force reactivity update
                                 messages[messages.length - 1] = {
                                     ...lastMsg,
                                     content: assistantContent,
@@ -163,7 +155,7 @@
                 }
             }
 
-            // Reload suggestions contextually
+            // Reload suggestions after chat
             loadSuggestions();
         } catch (e) {
             console.error(e);
@@ -186,10 +178,8 @@
             const { signOutUser } = await import("$lib/auth");
             await signOutUser();
             appState.setAuthenticated(false);
-            messages = []; // Clear user messages on sign out
-            // Optionally reload anonymous session messages if you want to support that flow,
-            // but for now clearing is safer/cleaner.
-            loadSuggestions(); // Reload generic suggestions
+            messages = [];
+            suggestions = [];
         } catch (e) {
             console.error("Sign out failed", e);
         }
@@ -215,15 +205,15 @@
             <ThemeToggle />
         </div>
         <div>
-            <h1 class="text-2xl font-bold text-[#2d3436] m-0">
+            <h1 class="text-2xl font-bold text-white m-0">
                 Chat with Digital Twin
             </h1>
-            <p class="mt-1 text-[#2d3436] text-sm font-medium opacity-80">
+            <p class="mt-1 text-white text-sm font-medium opacity-90">
                 Your virtual realtor at your service!!
             </p>
         </div>
         <button
-            class="text-[#2d3436] text-sm font-semibold hover:text-white transition-colors bg-white/20 p-2 rounded-lg"
+            class="text-white text-sm font-semibold hover:bg-white/20 transition-colors p-2 rounded-lg border border-white/30"
             onclick={() => {
                 if (appState.isAuthenticated) {
                     handleSignOut();
@@ -245,9 +235,8 @@
         {/each}
 
         {#if isLoading && (!messages.length || messages[messages.length - 1].role === "user")}
-            <!-- Simple Typing Indicator -->
             <div
-                class="flex items-center gap-2 p-3 px-4 mb-4 rounded-[18px] rounded-bl-md border border-[var(--color-border-primary)] bg-gradient-to-br from-[var(--color-msg-assistant-start)] to-[var(--color-msg-assistant-end)] text-[#2d3436] max-w-fit"
+                class="flex items-center gap-2 p-3 px-4 mb-4 rounded-[18px] rounded-bl-md border-2 border-[var(--color-border-primary)] bg-gradient-to-br from-[var(--color-msg-assistant-start)] to-[var(--color-msg-assistant-end)] text-[var(--text-primary)] max-w-fit"
             >
                 <div class="flex gap-1">
                     <span
@@ -265,19 +254,19 @@
         {/if}
     </div>
 
-    <!-- Suggestions Area -->
+    <!-- Question Suggestions Area -->
     {#if suggestions.length > 0 && !isLoading}
         <div
-            class="p-4 bg-[var(--bg-suggestions)] border-t border-[var(--color-border-primary)]"
+            class="p-4 bg-[var(--bg-suggestions)] border-t-2 border-[var(--color-border-primary)]"
         >
-            <p class="text-xs font-semibold text-[var(--text-secondary)] mb-2">
+            <p class="text-sm font-semibold text-[var(--text-primary)] mb-3">
                 Suggested questions:
             </p>
             <div class="grid grid-cols-2 gap-2">
                 {#each suggestions as suggestion}
                     <button
                         onclick={() => handleSend(suggestion)}
-                        class="text-left text-xs p-2 rounded-lg border border-[var(--color-border-primary)] bg-[var(--bg-container)] hover:bg-gradient-to-br hover:from-[var(--color-msg-user-start)] hover:to-[var(--color-msg-user-end)] transition-all text-[var(--text-primary)]"
+                        class="text-left text-sm p-3 rounded-lg border-2 border-[var(--color-border-primary)] bg-white dark:bg-[var(--bg-container)] hover:bg-gradient-to-br hover:from-[var(--color-msg-user-start)] hover:to-[var(--color-msg-user-end)] hover:border-[var(--color-accent-primary)] transition-all text-[var(--text-primary)] font-medium"
                     >
                         {suggestion}
                     </button>

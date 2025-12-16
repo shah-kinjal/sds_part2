@@ -36,10 +36,26 @@ class Frontend(Construct):
         admin_env_s3_origin = origins.S3BucketOrigin.with_origin_access_control(admin_env_bucket,
                                                                        origin_access_levels=[cloudfront.AccessLevel.READ, cloudfront.AccessLevel.LIST],
                                                                       )
+        # Origin Request Policy for cookies and query strings
         origin_request_policy = cloudfront.OriginRequestPolicy(self, "OriginRequestPolicy",
                                                                cookie_behavior=cloudfront.OriginRequestCookieBehavior.all(),
                                                                query_string_behavior=cloudfront.OriginRequestQueryStringBehavior.all(),
                                                                )
+        
+        # Custom Cache Policy that forwards the Authorization header
+        # Note: Authorization header MUST be in CachePolicy, not OriginRequestPolicy
+        auth_cache_policy = cloudfront.CachePolicy(self, "AuthCachePolicy",
+                                                   cache_policy_name=f"AuthCachePolicy-{id}",
+                                                   comment="Cache policy that forwards Authorization header",
+                                                   default_ttl=Duration.seconds(0),
+                                                   min_ttl=Duration.seconds(0),
+                                                   max_ttl=Duration.seconds(1),
+                                                   cookie_behavior=cloudfront.CacheCookieBehavior.all(),
+                                                   query_string_behavior=cloudfront.CacheQueryStringBehavior.all(),
+                                                   header_behavior=cloudfront.CacheHeaderBehavior.allow_list('Authorization'),
+                                                   enable_accept_encoding_gzip=True,
+                                                   enable_accept_encoding_brotli=True,
+                                                   )
         backend_origin = origins.HttpOrigin(
             domain_name=backend_endpoint,
             read_timeout=Duration.seconds(60),
@@ -105,7 +121,7 @@ function handler(event) {
                                                                     viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                                                                     origin_request_policy=origin_request_policy,
                                                                     allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
-                                                                    cache_policy=cloudfront.CachePolicy.CACHING_DISABLED
+                                                                    cache_policy=auth_cache_policy
                                                                 ),
                                                                 '/adminapi/*': cloudfront.BehaviorOptions(
                                                                     origin=admin_origin,

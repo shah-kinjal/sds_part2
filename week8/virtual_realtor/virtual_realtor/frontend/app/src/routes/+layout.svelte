@@ -23,6 +23,12 @@
 
 <LoginModal
 	isOpen={appState.isLoginModalOpen}
-	onClose={() => (appState.isLoginModalOpen = false)}
-	onLogin={(email: string) => console.log("Login requested", email)}
+	onClose={() => {
+		console.log("=== Login Modal onClose called ===");
+		appState.closeLoginModal();
+	}}
+	onLogin={(email: string) => {
+		console.log("=== Login Successful ===", email);
+		appState.closeLoginModal();
+	}}
 />

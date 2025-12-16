@@ -124,6 +124,9 @@ class Backend(Construct):
                 cors=_lambda.FunctionUrlCorsOptions(
                     allowed_methods=[_lambda.HttpMethod.ALL],
                     allowed_origins=['*'],
+                    allowed_headers=['*'],
+                    exposed_headers=['*'],
+                    allow_credentials=True,
                 ),
             )
         self.endpoint = fn_url.url

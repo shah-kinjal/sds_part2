@@ -14,15 +14,143 @@ import time
 
 logger = logging.getLogger(__name__)
 load_dotenv()
-api_key = os.environ.get("RENTCAST_API_KEY") or os.environ.get("RENTAL_CAST_API_KEY")
-if not api_key:
-    error_msg = "RENTCAST_API_KEY environment variable is not set. Please set it in your .env file."
-    logger.error(error_msg)
-    raise ValueError(error_msg)
-logger.info(f"API Key: {api_key}")
-api_url = os.environ.get("RENTCAST_API_URL", "https://api.rentcast.io/v1/listings/sale")
+
+# Configuration: Use mock API for testing
+USE_MOCK_API = os.environ.get("USE_MOCK_RENTCAST_API", "true").lower() == "true"
+
+if USE_MOCK_API:
+    logger.warning("⚠️ USING MOCK RENTCAST API - Set USE_MOCK_RENTCAST_API=false to use real API")
+    api_key = "mock-api-key"
+    api_url = "mock://rentcast.io/v1/listings/sale"
+else:
+    api_key = os.environ.get("RENTCAST_API_KEY") or os.environ.get("RENTAL_CAST_API_KEY")
+    if not api_key:
+        error_msg = "RENTCAST_API_KEY environment variable is not set. Please set it in your .env file."
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    logger.info(f"API Key: {api_key[:10]}...")
+    api_url = os.environ.get("RENTCAST_API_URL", "https://api.rentcast.io/v1/listings/sale")
+    
 url = api_url 
 logger.info(f"API URL: {url}")
+
+
+def generate_mock_properties(
+    city: str = None,
+    state: str = "CA",
+    zipCode: str = None,
+    limit: int = 10,
+    bedrooms: str = None,
+    bathrooms: str = None,
+    price: str = None,
+    **kwargs
+) -> List[Dict[str, Any]]:
+    """
+    Generate mock property data for testing.
+    Returns realistic property listings based on search criteria.
+    """
+    # Sample California cities and zip codes
+    mock_locations = {
+        "94539": {"city": "Fremont", "state": "CA"},
+        "94102": {"city": "San Francisco", "state": "CA"},
+        "94301": {"city": "Palo Alto", "state": "CA"},
+        "94025": {"city": "Menlo Park", "state": "CA"},
+        "94041": {"city": "Mountain View", "state": "CA"},
+    }
+    
+    # Determine location
+    if zipCode and zipCode in mock_locations:
+        location = mock_locations[zipCode]
+    elif city:
+        location = {"city": city, "state": state or "CA"}
+    else:
+        location = {"city": "Fremont", "state": "CA"}
+        zipCode = "94539"
+    
+    # Parse search criteria
+    min_price, max_price = 500000, 2000000
+    if price:
+        if '-' in price:
+            parts = price.split('-')
+            min_price, max_price = int(parts[0]), int(parts[1])
+    
+    min_beds, max_beds = 2, 5
+    if bedrooms:
+        if '-' in bedrooms:
+            parts = bedrooms.split('-')
+            min_beds, max_beds = int(parts[0]), int(parts[1])
+    
+    # Sample street names
+    streets = [
+        "Mohave Cmn", "Mission Blvd", "Hackamore Ln", "Corte Verde", "Zacate Ave",
+        "Mill Creek Rd", "Highland Ter", "Pinion St", "Oak St", "Maple Ave"
+    ]
+    
+    # Property types and their typical characteristics
+    property_types = [
+        {"type": "Single Family", "sqft_range": (1500, 3000), "lot_mult": 5},
+        {"type": "Condo", "sqft_range": (800, 1500), "lot_mult": 0},
+        {"type": "Townhouse", "sqft_range": (1200, 2000), "lot_mult": 0.1},
+    ]
+    
+    properties = []
+    import random
+    random.seed(hash(zipCode or city or "default"))  # Consistent results for same search
+    
+    for i in range(min(limit, 10)):
+        prop_type = random.choice(property_types)
+        beds = random.randint(max(min_beds, 1), min(max_beds, 6))
+        baths = random.choice([1.5, 2, 2.5, 3, 3.5, 4]) if beds >= 3 else random.choice([1, 1.5, 2])
+        sqft = random.randint(*prop_type["sqft_range"])
+        lot_size = int(sqft * prop_type["lot_mult"]) if prop_type["lot_mult"] > 0 else sqft
+        
+        base_price = random.randint(min_price, max_price)
+        year_built = random.randint(1970, 2020)
+        days_on_market = random.randint(1, 180)
+        
+        street_num = random.randint(100, 9999)
+        street = random.choice(streets)
+        address = f"{street_num} {street}, {location['city']}, {location['state']} {zipCode}"
+        property_id = address.replace(" ", "-").replace(",", "")
+        
+        property_data = {
+            "id": property_id,
+            "formattedAddress": address,
+            "addressLine1": f"{street_num} {street}",
+            "addressLine2": None,
+            "city": location["city"],
+            "state": location["state"],
+            "zipCode": zipCode or "94539",
+            "county": "Alameda",
+            "latitude": round(37.5 + random.uniform(-0.1, 0.1), 6),
+            "longitude": round(-121.9 + random.uniform(-0.1, 0.1), 6),
+            "propertyType": prop_type["type"],
+            "bedrooms": beds,
+            "bathrooms": baths,
+            "squareFootage": sqft,
+            "lotSize": lot_size if lot_size > 0 else None,
+            "yearBuilt": year_built,
+            "status": "Active",
+            "price": base_price,
+            "listingType": "Standard",
+            "listedDate": f"{2024 - (days_on_market // 365)}-{str((days_on_market % 365) // 30 + 1).zfill(2)}-01T00:00:00.000Z",
+            "daysOnMarket": days_on_market,
+            "mlsName": random.choice(["BayEast", "MLSListings", "BAREIS"]),
+            "mlsNumber": f"{random.randint(40000000, 42000000)}",
+            "listingAgent": {
+                "name": random.choice(["John Smith", "Jane Doe", "Mike Johnson", "Sarah Williams"]),
+                "phone": f"510{random.randint(1000000, 9999999)}"
+            }
+        }
+        
+        # Add HOA fee for condos and townhouses
+        if prop_type["type"] in ["Condo", "Townhouse"]:
+            property_data["hoa"] = {"fee": random.randint(300, 600)}
+        
+        properties.append(property_data)
+    
+    logger.info(f"🎭 Generated {len(properties)} mock properties for {location['city']}, {zipCode}")
+    return properties
 
 
 class Question(BaseModel):
@@ -169,7 +297,7 @@ class QuestionManager:
         includeTotalCount: bool = False
     ) -> str:
         """
-        Search for properties for sale using the RentCast API.
+        Search for properties for sale using the RentCast API (or mock API if enabled).
         At least one of city, state, zipCode, or address must be provided.
         
         Args:
@@ -197,6 +325,28 @@ class QuestionManager:
             JSON string containing property listings or error message
         """
         logger.info(f"search_properties called with params - city: {city}, state: {state}, zipCode: {zipCode}, address: {address}")
+        
+        # Use mock API if enabled
+        if USE_MOCK_API:
+            logger.info("Using MOCK RentCast API")
+            try:
+                mock_properties = generate_mock_properties(
+                    city=city,
+                    state=state,
+                    zipCode=zipCode,
+                    limit=limit,
+                    bedrooms=bedrooms,
+                    bathrooms=bathrooms,
+                    price=price,
+                    propertyType=propertyType
+                )
+                return json.dumps(mock_properties, indent=2)
+            except Exception as e:
+                error_msg = f"Error generating mock properties: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                return json.dumps({"error": error_msg})
+        
+        # Use real RentCast API
         try:    
             # Build params dict, only including non-None values
             params = {}
