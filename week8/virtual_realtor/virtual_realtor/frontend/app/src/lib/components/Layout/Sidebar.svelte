@@ -5,7 +5,8 @@
     }>();
 
     function handleViewChange(view: 'chat' | 'suggestions') {
-        currentView = view;
+        // Only call parent's handler - let parent update currentView
+        // The bindable prop will update automatically from parent
         onViewChange(view);
     }
 </script>

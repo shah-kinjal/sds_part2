@@ -42,10 +42,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+# Main chat model
 model_id = os.environ.get("MODEL_ID", "")
 bedrock_model = BedrockModel(
     model_id=model_id,
     # Add Guardrails here
+)
+
+# Property suggestions model (uses Google Gemma for faster responses)
+suggestions_model_id = os.environ.get("SUGGESTIONS_MODEL_ID", "google.gemma-3-4b-it")
+suggestions_bedrock_model = BedrockModel(
+    model_id=suggestions_model_id,
+)
+
+# Question generator model (uses Mistral for quick question generation)
+question_gen_model_id = os.environ.get("QUESTION_GEN_MODEL_ID", "mistral.magistral-small-2509")
+question_gen_bedrock_model = BedrockModel(
+    model_id=question_gen_model_id,
 )
 
 current_agent: Agent | None = None
@@ -308,11 +322,13 @@ Return ONLY the 4 questions as a JSON array, no other information necessary. For
 Return ONLY the 4 questions as a JSON array, no other information necessary. Format: ["question 1", "question 2", "question 3", "question 4"]"""
     
     try:
-        # Use an Agent with the model for simple generation
+        # Use an Agent with the Mistral model for fast question generation
         suggestion_agent = Agent(
-            model=bedrock_model,
+            model=question_gen_bedrock_model,
             system_prompt="You are a helpful real estate advising assistant that generates relevant real estate questions. Always respond with valid JSON only."
         )
+        logger.info(f"Creating question generator agent with model: {question_gen_model_id}")
+        
         response_text = ""
         async for event in suggestion_agent.stream_async(suggestion_prompt):
             if "data" in event:
@@ -607,10 +623,12 @@ User's search preferences:
 CRITICAL: Return ONLY the JSON array, no other text."""
 
         suggestions_agent = Agent(
-            model=bedrock_model,
+            model=suggestions_bedrock_model,  # Use Google Gemma model for faster suggestions
             system_prompt=SUGGESTIONS_SYSTEM_PROMPT,
             tools=[search_properties]  # Only search tool - no get_user_preferences needed
         )
+        
+        logger.info(f"Creating suggestions agent with model: {suggestions_model_id}")
         
         # Generate suggestions with criteria pre-loaded
         prompt = f"{criteria_text}\n\nSearch for {limit} properties matching these criteria. Return results as JSON array only."

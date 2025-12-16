@@ -42,6 +42,12 @@ class Backend(Construct):
         # Serper API configuration for web search
         serper_api_key = os.environ.get("SERPER_API_KEY", "")
         serper_url = os.environ.get("SERPER_URL", "https://google.serper.dev/search")
+        
+        # Model configuration
+        use_mock_rentcast = os.environ.get("USE_MOCK_RENTCAST_API", "true")
+        suggestions_model_id = os.environ.get("SUGGESTIONS_MODEL_ID", "google.gemma-3-4b-it")
+        question_gen_model_id = os.environ.get("QUESTION_GEN_MODEL_ID", "mistral.magistral-small-2509")
+        main_model_id = os.environ.get("MODEL_ID", "global.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
         state_bucket = s3.Bucket(self, 'StateBucket')
         notification_topic = sns.Topic(self, 'StateNotificationTopic')
@@ -74,7 +80,10 @@ class Backend(Construct):
                                     "AWS_LWA_INVOKE_MODE": "response_stream",
                                     "DDB_TABLE": dynamo_db_table.table_name,
                                     "KNOWLEDGE_BASE_ID": kb_id,
-                                    "MODEL_ID": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                                    "MODEL_ID": main_model_id,
+                                    "SUGGESTIONS_MODEL_ID": suggestions_model_id,
+                                    "QUESTION_GEN_MODEL_ID": question_gen_model_id,
+                                    "USE_MOCK_RENTCAST_API": use_mock_rentcast,
                                     "LLM_AS_A_JUDGE_MODEL_ID": "us.amazon.nova-pro-v1:0",
                                     "OPENAI_API_KEY": openai_api_key,
                                     "OPENAI_MODEL_ID": openai_model_id,

@@ -20,33 +20,22 @@
     let isInitialLoad = $state(true);
     let lastLoadAttempt = $state(0);
 
+    // Remove reactive $effect to prevent loops
+    // Load only on explicit user actions (view change, refresh, etc.)
+    
     onMount(() => {
+        // Initial load if needed
         if (appState.isAuthenticated && currentView === 'suggestions') {
             loadPropertySuggestions();
         }
     });
 
-    $effect(() => {
-        // Only trigger if authenticated and on suggestions view
-        // Prevent loops by checking if we're already loading or just loaded
-        const now = Date.now();
-        const timeSinceLastLoad = now - lastLoadAttempt;
-        
-        if (appState.isAuthenticated && currentView === 'suggestions' && !isLoadingSuggestions && timeSinceLastLoad > 1000) {
-            // Only load if not already loading and at least 1 second since last attempt
-            loadPropertySuggestions();
-        } else if (!appState.isAuthenticated) {
-            propertySuggestions = [];
-            hasPreferences = false;
-            showPreferencesForm = false;
-            errorMessage = "";
-            isInitialLoad = true;
-        }
-    });
-
     function handleViewChange(view: 'chat' | 'suggestions') {
+        const wasOnDifferentView = currentView !== view;
         currentView = view;
-        if (view === 'suggestions' && appState.isAuthenticated) {
+        
+        // Only load if switching TO suggestions view (not already on it)
+        if (wasOnDifferentView && view === 'suggestions' && appState.isAuthenticated) {
             loadPropertySuggestions();
         }
     }
@@ -63,13 +52,21 @@
             return;
         }
         
+        // Prevent calls within 10 seconds of last attempt (anti-spam protection)
+        const now = Date.now();
+        const timeSinceLastLoad = now - lastLoadAttempt;
+        if (lastLoadAttempt > 0 && timeSinceLastLoad < 10000) {
+            console.log(`⚠️ Too soon since last load (${Math.round(timeSinceLastLoad/1000)}s ago). Minimum 10 seconds between loads.`);
+            return;
+        }
+        
         if (!appState.isAuthenticated) {
             console.log("❌ Not authenticated, skipping suggestions load");
             return;
         }
 
         // Update last load attempt time
-        lastLoadAttempt = Date.now();
+        lastLoadAttempt = now;
         
         console.log("=== Starting to load property suggestions ===");
         isLoadingSuggestions = true;
