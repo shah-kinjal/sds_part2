@@ -149,42 +149,43 @@
 </script>
 
 <div class="flex h-screen bg-[var(--bg-body)] overflow-hidden">
-    <!-- Left Sidebar -->
-    <Sidebar {currentView} onViewChange={handleViewChange}>
-        <svelte:fragment slot="footer">
-            {#if appState.isAuthenticated}
-                <button
-                    onclick={handleSignOut}
-                    class="w-full px-4 py-2.5 rounded-lg text-[var(--text-primary)] hover:bg-[var(--bg-container)] transition-colors text-sm font-medium text-left"
-                >
-                    Sign Out
-                </button>
-            {:else}
-                <button
-                    onclick={() => {
-                        console.log("=== Sign In Button Clicked ===");
-                        console.log("Before - appState.isLoginModalOpen:", appState.isLoginModalOpen);
-                        appState.openLoginModal();
-                        console.log("After - appState.isLoginModalOpen:", appState.isLoginModalOpen);
-                    }}
-                    class="w-full px-4 py-2.5 rounded-lg bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-secondary)] transition-colors text-sm font-medium"
-                >
-                    Sign In
-                </button>
-            {/if}
-        </svelte:fragment>
-    </Sidebar>
+        <!-- Left Sidebar -->
+        <Sidebar {currentView} onViewChange={handleViewChange}>
+            <svelte:fragment slot="footer">
+                {#if appState.isAuthenticated}
+                    <button
+                        onclick={handleSignOut}
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-all text-sm font-medium"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        <span>Sign Out</span>
+                    </button>
+                {:else}
+                    <button
+                        onclick={() => appState.openLoginModal()}
+                        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-white font-semibold hover:shadow-lg transition-all"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                        </svg>
+                        <span>Sign In</span>
+                    </button>
+                {/if}
+            </svelte:fragment>
+        </Sidebar>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 overflow-hidden">
+        <!-- Main Content Area (Center) -->
+        <main class="flex-1 overflow-hidden">
         {#if currentView === 'chat'}
             <ChatContainer />
         {:else}
-            <!-- Property Suggestions View -->
-            <div class="h-full flex flex-col bg-[var(--bg-body)]">
+            <!-- Property Suggestions View (Centered) -->
+            <div class="h-full flex flex-col items-center bg-[var(--bg-body)] overflow-hidden">
                 {#if !appState.isAuthenticated}
                     <!-- Login prompt -->
-                    <div class="flex-1 flex items-center justify-center">
+                    <div class="flex-1 flex items-center justify-center w-full">
                         <div class="text-center max-w-md px-6">
                             <div class="mb-6">
                                 <svg class="w-20 h-20 mx-auto text-[var(--color-accent-primary)] opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +208,7 @@
                     </div>
                 {:else if isLoadingSuggestions}
                     <!-- Loading State -->
-                    <div class="flex-1 flex items-center justify-center">
+                    <div class="flex-1 flex items-center justify-center w-full">
                         <div class="text-center">
                             <div class="flex gap-2 justify-center mb-4">
                                 <span class="w-3 h-3 bg-[var(--color-accent-primary)] rounded-full animate-bounce"></span>
@@ -220,8 +221,8 @@
                         </div>
                     </div>
                 {:else if showPreferencesForm}
-                    <!-- Preferences Form -->
-                    <div class="flex-1 overflow-y-auto">
+                    <!-- Preferences Form (Centered) -->
+                    <div class="flex-1 overflow-y-auto w-full">
                         <div class="max-w-2xl mx-auto px-6 py-12">
                             <div class="mb-8 text-center">
                                 <h2 class="text-3xl font-semibold text-[var(--text-primary)] mb-3">
@@ -247,100 +248,34 @@
                         </div>
                     </div>
                 {:else if hasPreferences}
-                    <!-- Property Suggestions -->
-                    <div class="flex-1 overflow-y-auto">
-                        <div class="max-w-4xl mx-auto px-6 py-8">
-                            <div class="mb-6 flex justify-between items-center">
-                                <div>
-                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-1">
-                                        Property Suggestions
-                                    </h2>
-                                    <p class="text-[var(--text-secondary)] text-sm">
-                                        {propertySuggestions.length} {propertySuggestions.length === 1 ? 'property' : 'properties'} found based on your preferences
-                                    </p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button
-                                        onclick={handleEditPreferences}
-                                        class="px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--text-primary)] hover:bg-[var(--bg-container)] transition-colors text-sm font-medium"
-                                    >
-                                        ✏️ Edit Preferences
-                                    </button>
-                                    <button
-                                        onclick={handleRefreshSuggestions}
-                                        class="px-4 py-2 rounded-lg bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-secondary)] transition-colors text-sm font-medium"
-                                    >
-                                        🔄 Refresh
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Properties List -->
-                            <div class="space-y-4">
-                                {#each propertySuggestions as property, index}
-                                    <div class="bg-[var(--bg-card)] border border-[var(--color-border-primary)] rounded-xl p-6 hover:border-[var(--color-accent-primary)] transition-all shadow-sm hover:shadow-md">
-                                        <div class="flex items-start gap-4">
-                                            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--color-accent-primary)] flex items-center justify-center text-white font-bold">
-                                                {index + 1}
-                                            </div>
-                                            
-                                            <div class="flex-1">
-                                                <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">
-                                                    {property.address}
-                                                </h3>
-
-                                                <div class="text-2xl font-bold text-[var(--color-accent-primary)] mb-4">
-                                                    {new Intl.NumberFormat("en-US", {
-                                                        style: "currency",
-                                                        currency: "USD",
-                                                        maximumFractionDigits: 0,
-                                                    }).format(property.price)}
-                                                </div>
-
-                                                <div class="grid grid-cols-2 gap-3 mb-4">
-                                                    <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                                                        <span class="text-xl">🛏️</span>
-                                                        <span class="font-semibold text-[var(--text-primary)]">{property.beds}</span>
-                                                        <span>bed{property.beds !== 1 ? 's' : ''}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                                                        <span class="text-xl">🛁</span>
-                                                        <span class="font-semibold text-[var(--text-primary)]">{property.baths}</span>
-                                                        <span>bath{property.baths !== 1 ? 's' : ''}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                                                        <span class="text-xl">📏</span>
-                                                        <span class="font-semibold text-[var(--text-primary)]">{property.sqft.toLocaleString()}</span>
-                                                        <span>sqft</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                                                        <span class="text-xl">📅</span>
-                                                        <span class="font-semibold text-[var(--text-primary)]">{property.daysOnMarket}</span>
-                                                        <span>day{property.daysOnMarket !== 1 ? 's' : ''}</span>
-                                                    </div>
-                                                </div>
-
-                                                <a
-                                                    href={property.sourceUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-secondary)] transition-colors text-sm font-medium"
-                                                >
-                                                    <span>View on Zillow</span>
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                                                    </svg>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                {/each}
+                    <!-- Property Suggestions Component (Centered) -->
+                    <div class="h-full flex flex-col w-full max-w-5xl mx-auto">
+                        <div class="border-b border-[var(--border-light)] px-6 py-4 bg-white">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-xl font-semibold text-[var(--text-primary)]">
+                                    Your Property Matches
+                                </h2>
+                                <button
+                                    onclick={handleEditPreferences}
+                                    class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-container)] text-[var(--text-primary)] font-medium hover:bg-[var(--bg-hover)] transition-all border border-[var(--border-light)]"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    <span>Edit Preferences</span>
+                                </button>
                             </div>
                         </div>
+                        <PropertySuggestions 
+                            suggestions={propertySuggestions}
+                            onRefresh={handleRefreshSuggestions}
+                            isLoading={isLoadingSuggestions}
+                        />
                     </div>
                 {:else}
                     <!-- Error State -->
-                    <div class="flex-1 flex items-center justify-center">
+                    <div class="flex-1 flex items-center justify-center w-full">
                         <div class="text-center max-w-md px-6">
                             <p class="text-[var(--text-secondary)] mb-6">
                                 {errorMessage || "Something went wrong. Please try again."}

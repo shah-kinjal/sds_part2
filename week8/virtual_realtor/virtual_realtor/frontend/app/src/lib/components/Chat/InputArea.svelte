@@ -25,7 +25,7 @@
         bind:value={message}
         onkeydown={handleKeydown}
         {disabled}
-        placeholder="Type your message..."
+        placeholder="Your next home just a message away..."
         class="flex-1 p-3 px-4 border-2 border-[var(--color-border-primary)] rounded-full text-base outline-none transition-all duration-300 bg-white dark:bg-[#2c2c2c] text-[#2d3436] dark:text-[#e0e0e0] focus:border-[var(--color-accent-tertiary)] focus:shadow-[0_0_0_3px_rgba(232,93,117,0.1)] disabled:opacity-60 disabled:cursor-not-allowed"
     />
     <button
