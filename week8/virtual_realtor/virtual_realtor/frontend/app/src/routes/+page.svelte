@@ -148,33 +148,42 @@
     }
 </script>
 
+{#snippet footerContent()}
+    {#if appState.isAuthenticated}
+        <!-- User info row -->
+        <div class="flex items-center gap-3 px-3 py-2 mb-2 rounded-lg hover:bg-[var(--sidebar-hover)] cursor-pointer transition-colors">
+            <div class="w-8 h-8 rounded-full bg-[var(--sidebar-active)] flex items-center justify-center text-[var(--sidebar-text)] text-sm font-medium">
+                {appState.user?.email?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <span class="text-sm text-[var(--sidebar-text)] truncate flex-1">
+                {appState.user?.email || 'User'}
+            </span>
+        </div>
+        <button
+            onclick={handleSignOut}
+            class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text)] transition-all text-sm"
+        >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            <span>Sign Out</span>
+        </button>
+    {:else}
+        <button
+            onclick={() => appState.openLoginModal()}
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] transition-all text-sm"
+        >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+            </svg>
+            <span>Sign In</span>
+        </button>
+    {/if}
+{/snippet}
+
 <div class="flex h-screen bg-[var(--bg-body)] overflow-hidden">
         <!-- Left Sidebar -->
-        <Sidebar {currentView} onViewChange={handleViewChange}>
-            <svelte:fragment slot="footer">
-                {#if appState.isAuthenticated}
-                    <button
-                        onclick={handleSignOut}
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-all text-sm font-medium"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                        </svg>
-                        <span>Sign Out</span>
-                    </button>
-                {:else}
-                    <button
-                        onclick={() => appState.openLoginModal()}
-                        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-white font-semibold hover:shadow-lg transition-all"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                        </svg>
-                        <span>Sign In</span>
-                    </button>
-                {/if}
-            </svelte:fragment>
-        </Sidebar>
+        <Sidebar {currentView} onViewChange={handleViewChange} footer={footerContent} />
 
         <!-- Main Content Area (Center) -->
         <main class="flex-1 overflow-hidden">
