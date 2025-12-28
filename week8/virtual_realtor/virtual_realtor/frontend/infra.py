@@ -97,6 +97,7 @@ function handler(event) {
                                                             default_behavior=cloudfront.BehaviorOptions(
                                                                 origin=s3_origin,
                                                                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                                                                cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
                                                                 function_associations=[cloudfront.FunctionAssociation(
                                                                     function=rewrite_function,
                                                                     event_type=cloudfront.FunctionEventType.VIEWER_REQUEST
@@ -140,13 +141,13 @@ function handler(event) {
                                           user="root",
                                           command=[
                                               "sh", "-c",
-                                              "npm ci && npm run build && cp -r build/* /asset-output/"
+                                              "npm ci && npm run build && cp -r build/. /asset-output/"
                                           ],
                                           working_directory="/asset-input",
                                       ))],
                                       destination_bucket=frontend_bucket,
                                       distribution=distribution,
-                                      distribution_paths=['/'],
+                                      distribution_paths=['/*'],
                                      )
 
         admin_frontend_deployment = s3deploy.BucketDeployment(self, 'DeployAdminFrontend',

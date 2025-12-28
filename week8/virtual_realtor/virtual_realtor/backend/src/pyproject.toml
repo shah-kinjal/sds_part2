@@ -13,4 +13,9 @@ dependencies = [
     "uvicorn>=0.35.0",
     "python-jose>=3.3.0",
     "requests>=2.31.0",
+    "aws-cdk-lib>=2.110.0",
+    "constructs>=10.0.0",
 ]
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

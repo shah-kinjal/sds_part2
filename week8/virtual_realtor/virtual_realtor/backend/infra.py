@@ -53,7 +53,7 @@ class Backend(Construct):
         notification_topic = sns.Topic(self, 'StateNotificationTopic')
         fn = _lambda.Function(self, 'StateFunction',
                               function_name='VirtualRealtor',
-                              timeout=Duration.seconds(120),
+                              timeout=Duration.seconds(300),
                               architecture=_lambda.Architecture.X86_64,
                               runtime=_lambda.Runtime.PYTHON_3_13,
                               handler='run.sh',
@@ -62,7 +62,7 @@ class Backend(Construct):
                                         image=_lambda.Runtime.PYTHON_3_13.bundling_image,
                                         command=[
                                             'bash', '-c',
-                                            'pip install . -t /asset-output && cp -r app/* /asset-output/'
+                                            'pip install -r requirements.txt -t /asset-output && rm -rf /asset-output/aws_cdk* /asset-output/constructs* && cp -r app/* /asset-output/'
                                         ],
                                         user='root',
                                         platform='linux/amd64',

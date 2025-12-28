@@ -598,14 +598,16 @@ User's search preferences:
 - Property type: {property_type or 'Any'}
 """
         
-        # Create a simpler, faster suggestions prompt - no need to call get_user_preferences
-        SUGGESTIONS_SYSTEM_PROMPT = """You are a property suggestion assistant. 
-        Generate property suggestions as a JSON array.
-        Use the user's preferences to generate the suggestions.
-        you have a tool 'search_properties' that can be used to search for properties.
-        Use other context and user preferences to generate the suggestions.
-       Return ONLY a JSON array with this structure:
+        # Create a simpler, faster suggestions prompt
+        SUGGESTIONS_SYSTEM_PROMPT = """You are a property search assistant.
+Your job: Use the search_properties tool to find properties, then return them as a JSON array.
 
+IMPORTANT: 
+1. Call search_properties with the user's criteria
+2. Take the results and return them as a JSON array
+3. Return ONLY the JSON array, nothing else
+
+JSON format:
 [
   {
     "id": "property-id",
@@ -618,9 +620,7 @@ User's search preferences:
     "source": "RentCast",
     "sourceUrl": "https://www.zillow.com/homes/..."
   }
-]
-
-CRITICAL: Return ONLY the JSON array, no other text."""
+]"""
 
         suggestions_agent = Agent(
             model=suggestions_bedrock_model,  # Use Google Gemma model for faster suggestions
@@ -630,14 +630,51 @@ CRITICAL: Return ONLY the JSON array, no other text."""
         
         logger.info(f"Creating suggestions agent with model: {suggestions_model_id}")
         
-        # Generate suggestions with criteria pre-loaded
-        prompt = f"{criteria_text}\n\nSearch for {limit} properties matching these criteria. Return results as JSON array only."
+        # Generate suggestions with specific search instructions
+        if zip_codes:
+            zip_instruction = f"Search for properties in zip codes: {', '.join(zip_codes)}"
+        else:
+            zip_instruction = "Search for properties in the San Francisco Bay Area"
+        
+        prompt = f"""{zip_instruction}
+Price range: ${price_range.get('min', 0)} - ${price_range.get('max', 10000000)}
+Bedrooms: {bedrooms.get('min', 1)}-{bedrooms.get('max', 10)}
+Bathrooms: {bathrooms.get('min', 1)}-{bathrooms.get('max', 10)}
+
+Find {limit} properties. Use the search_properties tool and return the results as a JSON array."""
+        
         
         response_text = ""
         try:
-            async for event in suggestions_agent.stream_async(prompt):
-                if "data" in event:
-                    response_text += event["data"]
+            # Add timeout protection to prevent infinite loops
+            async def stream_with_timeout():
+                nonlocal response_text
+                start_time = asyncio.get_event_loop().time()
+                timeout_seconds = 60  # 1 minute timeout for suggestions
+                
+                async for event in suggestions_agent.stream_async(prompt):
+                    # Check timeout
+                    if asyncio.get_event_loop().time() - start_time > timeout_seconds:
+                        logger.warning(f"Suggestions agent timed out after {timeout_seconds}s")
+                        raise asyncio.TimeoutError("Agent response timeout")
+                    
+                    if "data" in event:
+                        response_text += event["data"]
+            
+            await stream_with_timeout()
+            
+        except asyncio.TimeoutError:
+            logger.error("Agent timed out generating suggestions")
+            # Fallback to empty results
+            return Response(
+                content=json.dumps({
+                    "suggestions": [],
+                    "count": 0,
+                    "hasPreferences": True,
+                    "message": "Request timed out. Please try again."
+                }),
+                media_type="application/json",
+            )
         except Exception as agent_error:
             logger.error(f"Agent error: {str(agent_error)}")
             # Fallback to empty results
