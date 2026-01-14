@@ -239,7 +239,10 @@ async def generate(agent: Agent, session_id: str, prompt: str, request: Request)
     try:
         async for event in agent.stream_async(prompt):
             if "data" in event:
-                yield f"data: {json.dumps(event['data'])}\n\n"
+                # The event['data'] is already a string, so we need to JSON stringify it
+                # to match the frontend's expectation of receiving JSON-encoded data
+                text_chunk = event['data']
+                yield f"data: {json.dumps(text_chunk)}\n\n"
     except Exception as e:
         logger.error(f"Error in generate: {str(e)}")
         error_message = json.dumps({"error": str(e)})

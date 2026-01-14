@@ -6,12 +6,7 @@ from strands import Agent, tool
 from strands.models import BedrockModel
 from strands.session.s3_session_manager import S3SessionManager
 from strands_tools import retrieve
-try:
-    from strands.models.openai import OpenAIModel
-    OPENAI_AVAILABLE = True
-except ModuleNotFoundError:
-    OPENAI_AVAILABLE = False
-    OpenAIModel = None
+
 import boto3
 import json
 import logging
@@ -21,13 +16,13 @@ import uvicorn
 import re
 from questions import Question, QuestionManager, Visitor
 
-name="Kinjal"
+name="Kinjal Shah"
 # Re-use boto session across invocations
 boto_session = boto3.Session()
 state_bucket_name = os.environ.get("STATE_BUCKET", "")
 if state_bucket_name == "":
     raise ValueError("BUCKET_NAME environment variable is not set.")
-logging.getLogger("strands").setLevel(logging.DEBUG)
+logging.getLogger("strands").setLevel(logging.INFO)
 logging.basicConfig(
     format="%(levelname)s | %(name)s | %(message)s", 
     handlers=[logging.StreamHandler()]
@@ -39,23 +34,10 @@ bedrock_model = BedrockModel(
     model_id=model_id,
     # Add Guardrails here
 )
-openai_model = None
-if OPENAI_AVAILABLE:
-    openai_model = OpenAIModel(
-        client_args={
-            "api_key": os.environ.get("OPENAI_API_KEY", ""),
-        },
-        model_id=os.environ.get("OPENAI_MODEL_ID", "gpt-4o"),
-        params={
-            "max_tokens": 1000,
-            "temperature": 0.7, 
-        }
-    )
-else:
-    logger.warning("OpenAI dependency not installed; skipping quality-control ratings.")
+
 current_agent: Agent | None = None
 conversation_manager = SlidingWindowConversationManager(
-    window_size=10,  # Maximum number of messages to keep
+    window_size=5,  # Reduced from 10 to improve performance
     should_truncate_results=True, # Enable truncating the tool result when a message is too large for the model's context window 
 )
 SYSTEM_PROMPT = f"""
@@ -66,7 +48,7 @@ If you don't know the answer to a question, use the save_unanswered_question too
 and let the user know that you've added the question to the database for future review and to comeback for an answer. 
 Gently ask for a contact information after a brief interaction. Dont be too pushy about it.
 Capture the visitor information using the capture_visitor_info tool when someone introduces themselves or provides their contact information.
-cDo not ask follow up questions. 
+Do not ask follow up questions. 
 """
 app = FastAPI()
 question_manager = QuestionManager()
@@ -131,52 +113,19 @@ def session(id: str) -> Agent:
 class ChatRequest(BaseModel):
     prompt: str
 
-async def generate_bedrock_response(agent: Agent, prompt: str) -> str:
-    full_response = ""
-    async for event in agent.stream_async(prompt):
-        if "data" in event:
-            full_response += event["data"]
-    return full_response
 
-async def rate_response_with_openai(prompt: str, response: str) -> dict | None:
-    if openai_model is None:
-        logger.warning("OpenAI model unavailable; skipping response rating.")
-        return None
-
-    rating_prompt = f"""You are a quality control agent. Rate the following response against the user's prompt on a scale of 1-10.
-Consider:
-- Relevance to the prompt
-- Clarity and conciseness
-- Accuracy and helpfulness
-- Tone and professionalism
-
-User Prompt: {prompt}
-
-Response: {response}
-
-Provide your rating as a JSON object with this exact format:
-{{"rating": <number between 1-10>, "feedback": "<brief explanation>"}}
-"""
-
-    rating_response = ""
-    async for event in openai_model.generate_stream(
-        messages=[{"role": "user", "content": rating_prompt}],
-        system=[{"text": "You are a quality control assistant. Always respond with valid JSON only."}]
-    ):
-        if "data" in event:
-            rating_response += event["data"]
-
-    logger.info(f"Rating response: {rating_response}")
-    json_match = re.search(r'\{.*\}', rating_response, re.DOTALL)
-    if not json_match:
-        return None
-
-    return json.loads(json_match.group())
 
 @app.post('/api/chat')
 async def chat(chat_request: ChatRequest, request: Request):
+    import time
+    start_time = time.time()
+    
     session_id: str = request.cookies.get("session_id", str(uuid.uuid4()))
+    logger.info(f"Chat request for session {session_id}")
+    
     agent = session(session_id)
+    logger.info(f"Agent created in {time.time() - start_time:.2f}s")
+    
     global current_agent
     current_agent = agent  # Store the current agent for use in tools
     response = StreamingResponse(
@@ -186,50 +135,25 @@ async def chat(chat_request: ChatRequest, request: Request):
     response.set_cookie(key="session_id", value=session_id)
     return response
 
+
 async def generate(agent: Agent, session_id: str, prompt: str, request: Request):
     try:
-        full_response = await generate_bedrock_response(agent, prompt)
-        logger.info(f"Initial response generated: {full_response[:100]}...")
-
-        max_retries = 2
-        retry_count = 0
-        approved_response = full_response
+        logger.info(f"Starting generation for session {session_id}")
         
-        while retry_count < max_retries:
-            rating_data = await rate_response_with_openai(prompt, approved_response)
-            if not rating_data:
-                logger.warning("Could not parse rating response, using original response")
-                break
-
-            rating = rating_data.get("rating", 10)
-            feedback = rating_data.get("feedback", "")
+        # Stream the response directly from the agent
+        has_data = False
+        async for event in agent.stream_async(prompt):
+            if "data" in event:
+                has_data = True
+                yield f"data: {json.dumps(event['data'])}\n\n"
+        
+        if not has_data:
+            logger.warning("No data was streamed from agent")
             
-            logger.info(f"Response rating: {rating}/10 - {feedback}")
-            
-            if rating >= 8:
-                logger.info("Response approved by quality control")
-                break
-            else:
-                retry_count += 1
-                if retry_count < max_retries:
-                    logger.info(f"Response rated {rating}/10, regenerating (attempt {retry_count + 1})")
-                    regeneration_prompt = f"{prompt}\n\nPlease improve your previous response. Quality feedback: {feedback}"
-                    approved_response = await generate_bedrock_response(agent, regeneration_prompt)
-                else:
-                    logger.warning(f"Max retries reached. Using last response with rating {rating}/10")
-                    break
-        
-        # Stream the approved response to the client
-        # Split into chunks for streaming effect
-        chunk_size = 50
-        for i in range(0, len(approved_response), chunk_size):
-            chunk = approved_response[i:i + chunk_size]
-            yield f"data: {json.dumps(chunk)}\n\n"
-        
         logger.info("Response streaming complete")
         
     except Exception as e:
-        logger.error(f"Error in generate: {str(e)}")
+        logger.error(f"Error in generate: {str(e)}", exc_info=True)
         error_message = json.dumps({"error": str(e)})
         yield f"event: error\ndata: {error_message}\n\n"
 
@@ -293,12 +217,15 @@ Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1"
 Return ONLY the 4 questions as a JSON array, nothing else. Format: ["question 1", "question 2", "question 3", "question 4"]"""
     
     try:
-        # Use the model directly without tools for simple generation
+        # Create a temporary agent for generating suggestions
+        suggestion_agent = Agent(
+            model=bedrock_model,
+            system_prompt="You are a helpful assistant that generates concise career-related questions. Always respond with valid JSON only.",
+            tools=[]
+        )
+        
         response_text = ""
-        async for event in bedrock_model.generate_stream(
-            messages=[{"role": "user", "content": suggestion_prompt}],
-            system=[{"text": "You are a helpful assistant that generates concise career-related questions. Always respond with valid JSON only."}]
-        ):
+        async for event in suggestion_agent.stream_async(suggestion_prompt):
             if "data" in event:
                 response_text += event["data"]
         
