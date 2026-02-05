@@ -82,6 +82,13 @@
         }
     }
 
+    async function handleClearChat() {
+        messages = [];
+        hasStartedChat = false;
+        inputText = "";
+        autoResizeTextarea();
+    }
+
     async function handleSend(text: string) {
         if (!text.trim() || isLoading) return;
 
@@ -230,6 +237,23 @@
 </script>
 
 <div class="h-full flex flex-col bg-[var(--bg-body)]">
+    <!-- Clear Chat Button - Fixed top right -->
+    {#if messages.length > 0}
+        <div class="border-b border-[var(--border-light)] bg-[var(--bg-body)]">
+            <div class="max-w-[48rem] mx-auto px-3 py-2 sm:px-4 flex justify-end">
+                <button
+                    onclick={handleClearChat}
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:bg-white transition-colors"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    <span>Clear chat</span>
+                </button>
+            </div>
+        </div>
+    {/if}
+
     <!-- Messages Area -->
     <div class="flex-1 overflow-y-auto" bind:this={messagesContainer}>
         <div class="max-w-[48rem] mx-auto px-3 py-4 sm:px-4 sm:py-6">
@@ -336,7 +360,7 @@
             <div
                 class="relative bg-white rounded-2xl border border-[var(--border-light)] shadow-sm focus-within:border-black transition-all"
             >
-                <div class="flex items-end gap-2 px-3 py-2">
+                <div class="flex items-end gap-3 px-4 py-3">
                     <!-- Text Input -->
                     <textarea
                         bind:this={textareaRef}
@@ -350,8 +374,8 @@
                         }}
                         placeholder="Message Virtual Realtor"
                         rows="1"
-                        class="flex-1 bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none text-sm resize-none leading-5 py-1"
-                        style="min-height: 20px; max-height: 160px;"
+                        class="flex-1 bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none text-base resize-none leading-6 py-1"
+                        style="min-height: 24px; max-height: 160px;"
                     ></textarea>
 
                     <!-- Send Button -->
@@ -359,13 +383,13 @@
                         aria-label="Send message"
                         onclick={() => handleSend(inputText)}
                         disabled={!inputText.trim() || isLoading}
-                        class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all {inputText.trim() &&
+                        class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all {inputText.trim() &&
                         !isLoading
                             ? 'bg-black text-white hover:bg-gray-800'
                             : 'bg-[var(--border-light)] text-[var(--text-muted)] cursor-not-allowed'}"
                     >
                         <svg
-                            class="w-4 h-4"
+                            class="w-5 h-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -373,8 +397,8 @@
                             <path
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
-                                stroke-width="2.5"
-                                d="M5 10l7-7m0 0l7 7m-7-7v18"
+                                stroke-width="2"
+                                d="M14 5l7 7m0 0l-7 7m7-7H3"
                             />
                         </svg>
                     </button>

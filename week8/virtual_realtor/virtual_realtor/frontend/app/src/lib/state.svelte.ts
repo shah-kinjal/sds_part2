@@ -3,20 +3,21 @@ import { signOut as amplifySignOut } from "aws-amplify/auth";
 export class AppState {
     isAuthenticated = $state(false);
     isLoginModalOpen = $state(false);
-    user = $state(null);
+    user = $state<{ email?: string } | null>(null);
+
 
     toggleLogin() {
         console.log("toggleLogin called. Current:", this.isLoginModalOpen);
         this.isLoginModalOpen = !this.isLoginModalOpen;
         console.log("toggleLogin done. New:", this.isLoginModalOpen);
     }
-    
+
     openLoginModal() {
         console.log("openLoginModal called");
         this.isLoginModalOpen = true;
         console.log("isLoginModalOpen set to:", this.isLoginModalOpen);
     }
-    
+
     closeLoginModal() {
         console.log("closeLoginModal called");
         this.isLoginModalOpen = false;

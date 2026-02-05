@@ -11,6 +11,7 @@ import json
 import logging
 from questions import QuestionManager
 from preferences import PreferencesManager
+from favorites import FavoritesManager
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,9 @@ question_manager = QuestionManager()
 
 # Initialize the preferences manager
 preferences_manager = PreferencesManager()
+
+# Initialize the favorites manager
+favorites_manager = FavoritesManager()
 
 
 @tool
@@ -239,6 +243,192 @@ def get_user_preferences(user_id: str) -> str:
         return json.dumps({"error": f"Failed to retrieve preferences: {str(e)}"})
 
 
+@tool
+def add_property_to_favorites(user_id: str, property_id: str, property_address: str = None) -> str:
+    """
+    Add a property to the user's favorites list.
+    Use when user asks to save, favorite, or bookmark a property.
+    
+    Args:
+        user_id: The user's Cognito sub (user ID)
+        property_id: The unique ID of the property
+        property_address: The address of the property (optional, for validation/fallback)
+        
+    Returns:
+        A confirmation message
+    """
+    try:
+        if not user_id:
+            return "You must be logged in to save properties."
+
+        # Fetch full property data
+        # Try retrieving from DB first
+        property_data = question_manager.get_property_info_from_db(property_id=property_id)
+        
+        # If not found in DB, try to fetch from API if address is provided
+        if not property_data and property_address:
+            logger.info(f"Property {property_id} not in DB, searching API for address: {property_address}")
+            # Search by address
+            search_results_json = question_manager.search_properties(address=property_address, limit=1)
+            try:
+                search_results = json.loads(search_results_json)
+                if isinstance(search_results, list) and len(search_results) > 0:
+                    property_data = search_results[0]
+                    # Save context to DB so we have it next time
+                    question_manager.add_property_info_to_db(property_data)
+                    logger.info(f"Fetched and cached property data for {property_address}")
+            except Exception as search_error:
+                logger.error(f"Error fetching property details: {search_error}")
+
+        if not property_data:
+             return "Property not found in our database. Please ensure you have searched for this property first or provide the full address."
+
+        favorites_manager.add_to_favorites(user_id, property_data, is_visit=False)
+        address = property_data.get('formattedAddress', property_address or 'the property')
+        return f"Added {address} to your favorites!"
+    except Exception as e:
+        logger.error(f"Error adding to favorites: {str(e)}")
+        return f"Failed to add to favorites: {str(e)}"
+
+
+
+@tool
+def add_property_to_visit_list(user_id: str, property_id: str) -> str:
+    """
+    Add a property to the visit list (and favorites if not already saved).
+    Use when user wants to schedule a visit or mark property as high priority.
+    
+    Args:
+        user_id: The user's Cognito sub (user ID)
+        property_id: The unique ID of the property
+        
+    Returns:
+        A confirmation message
+    """
+    try:
+        if not user_id:
+             return "You must be logged in to use the visit list."
+
+        # Check if already in favorites to skip fetch if permissible, 
+        # but manager needs data if new.
+        property_data = question_manager.get_property_info_from_db(property_id=property_id)
+        
+        # If in favorites but not in cache? FavoritesManager usually handles basic data.
+        # But if completely new, fetch it.
+        # We don't have property_address here in arguments! 
+        # But maybe we can try to extract address from ID if it follows our convention?
+        # Or rely on the agent calling add_property_to_favorites with address first?
+        # Let's try to infer address or update the tool signature in a future step if needed.
+        # For now, if property_data is None, we might fail unless we can guess address.
+        
+        # NOTE: Tool signature update requires agent prompt update. 
+        # Let's try to parse ID if it looks like an address slug.
+        if not property_data and property_id and "-" in property_id:
+             # Best effort: convert ID back to probable address string for search
+             probable_address = property_id.replace("-", " ")
+             # This is a bit risky but better than failing
+             logger.info(f"Property {property_id} not in DB, trying to search by inferred address: {probable_address}")
+             search_results_json = question_manager.search_properties(address=probable_address, limit=1)
+             try:
+                search_results = json.loads(search_results_json)
+                if isinstance(search_results, list) and len(search_results) > 0:
+                    property_data = search_results[0]
+                    question_manager.add_property_info_to_db(property_data)
+             except:
+                pass
+
+        if not property_data:
+            # Maybe it is already in favorites but expired from cache? 
+            # favorites_manager checks existing favorite first.
+            # But add_to_visit_list needs data if it's inserting a new record.
+            # If it's already a favorite, favorites_manager might handle it.
+            pass
+
+        result = favorites_manager.add_to_visit_list(user_id, property_id, property_data)
+        
+        address = result.get('formattedAddress', 'the property')
+        return f"Added {address} to your visit list!"
+    except Exception as e:
+        logger.error(f"Error adding to visit list: {str(e)}")
+        return f"Failed to add to visit list: {str(e)}"
+
+
+@tool
+def get_user_saved_properties(user_id: str, visit_only: bool = False) -> str:
+    """
+    Retrieve user's saved properties or visit list.
+    
+    Args:
+        user_id: The user's Cognito sub (user ID)
+        visit_only: If True, returns only properties in visit list. If False, returns all favorites.
+        
+    Returns:
+        JSON string containing list of properties
+    """
+    try:
+        if not user_id:
+            return json.dumps({"message": "User not authenticated"})
+            
+        items = favorites_manager.get_user_favorites(user_id, visit_only)
+        if not items:
+            msg = "You haven't saved any properties yet." if not visit_only else "Your visit list is empty."
+            return json.dumps({"message": msg, "items": []})
+            
+        return json.dumps(items, indent=2)
+    except Exception as e:
+        logger.error(f"Error getting saved properties: {str(e)}")
+        return json.dumps({"error": str(e)})
+
+
+@tool
+def remove_property_from_favorites(user_id: str, property_id: str) -> str:
+    """
+    Remove a property completely from favorites and visit list.
+    
+    Args:
+        user_id: The user's Cognito sub (user ID)
+        property_id: The unique ID of the property
+        
+    Returns:
+        Confirmation message
+    """
+    try:
+        if not user_id:
+            return "Unauthorized"
+        
+        favorites_manager.remove_from_favorites(user_id, property_id)
+        return "Property removed from favorites."
+    except Exception as e:
+        logger.error(f"Error removing from favorites: {str(e)}")
+        return f"Error removing property: {str(e)}"
+
+
+@tool
+def remove_property_from_visit_list(user_id: str, property_id: str) -> str:
+    """
+    Remove a property from the visit list but keep it in favorites.
+    
+    Args:
+        user_id: The user's Cognito sub (user ID)
+        property_id: The unique ID of the property
+        
+    Returns:
+        Confirmation message
+    """
+    try:
+        if not user_id:
+             return "Unauthorized"
+
+        success = favorites_manager.remove_from_visit_list(user_id, property_id)
+        if success:
+            return "Property removed from visit list (still in favorites)."
+        else:
+            return "Property was not in your visit list."
+    except Exception as e:
+        logger.error(f"Error removing from visit list: {str(e)}")
+        return f"Error updating list: {str(e)}"
+
+
 # Export all tools as a list for easy import
 ALL_TOOLS = [
     retrieve,
@@ -249,5 +439,10 @@ ALL_TOOLS = [
     get_property_info_from_db,
     search_properties_by_location_from_db,
     search_web,
-    get_user_preferences
+    get_user_preferences,
+    add_property_to_favorites,
+    add_property_to_visit_list,
+    get_user_saved_properties,
+    remove_property_from_favorites,
+    remove_property_from_visit_list
 ]

@@ -19,6 +19,7 @@ import re
 from tools import ALL_TOOLS, search_properties, get_property_info_from_db, search_properties_by_location_from_db, get_user_preferences
 from auth import verify_cognito_token
 from preferences import PreferencesManager, UserPreferences, PriceRange, BedroomRange, BathroomRange, SqftRange
+from favorites import FavoritesManager
 
 
 
@@ -62,6 +63,14 @@ question_gen_bedrock_model = BedrockModel(
     model_id=question_gen_model_id,
 )
 
+# Initialize managers
+preferences_manager = PreferencesManager()
+favorites_manager = FavoritesManager()
+question_gen_model_id = os.environ.get("QUESTION_GEN_MODEL_ID", "mistral.magistral-small-2509")
+question_gen_bedrock_model = BedrockModel(
+    model_id=question_gen_model_id,
+)
+
 current_agent: Agent | None = None
 conversation_manager = SlidingWindowConversationManager(
     window_size=10,  # Maximum number of messages to keep
@@ -85,6 +94,11 @@ You have access to following tools:
 6. get_property_info_from_db: get property information from the DB using property id or address.
 7. search_properties_by_location_from_db: search properties by location or city name or zip code from the DB.
 8. search_web: search Google for real-time information.
+9. add_property_to_favorites: Save a property to the user's favorites list (requires authentication).
+10. add_property_to_visit_list: Add property to visit list and favorites (requires authentication).
+11. get_user_saved_properties: Retrieve user's saved properties or visit list.
+12. remove_property_from_favorites: Remove property from favorites completely.
+13. remove_property_from_visit_list: Remove from visit list only (keeps in favorites).
 
 Use search_web tool when you need current information about:
    - Neighborhoods and local amenities
@@ -94,6 +108,18 @@ Use search_web tool when you need current information about:
    - Local attractions, restaurants, and shopping
    - Transportation and commute times
    - Any other real-time information not in the knowledge base
+
+Use favorites tools when users ask to:
+- "Save this property" / "Add to favorites" -> add_property_to_favorites
+- "Add to my visit list" / "Schedule a visit" / "I want to see this one" -> add_property_to_visit_list
+- "Show my saved properties" / "What have I saved?" -> get_user_saved_properties(visit_only=False)
+- "Show properties I want to visit" / "Show my visit list" -> get_user_saved_properties(visit_only=True)
+- "Remove from favorites" -> remove_property_from_favorites
+- "Remove from visit list" -> remove_property_from_visit_list
+
+IMPORTANT: For the FIRST property search in a new conversation, proactively mention:
+"I can save any of these properties to your favorites or visit list. Just let me know which ones interest you!"
+After mentioning once, do not repeat unless user asks about saving.
 
 Follow below order when looking for listed property information:
 1. First look for property  information in the database using the tools:
@@ -130,18 +156,24 @@ app.add_middleware(
 )
 
 
-def session(id: str) -> Agent:
+def session(id: str, user_id: str = None) -> Agent:
     
     session_manager = S3SessionManager(
         boto_session=boto_session,
         bucket=state_bucket_name,
         session_id=id,
     )
+    
+    # Inject user_id into system prompt if available so agent knows who to save favorites for
+    prompt = SYSTEM_PROMPT
+    if user_id:
+        prompt += f"\n\nCurrent Context:\nAuthenticated User ID: {user_id}\nUse this User ID for any tools that require it (like favorites or preferences)."
+    
     return Agent(
         conversation_manager=conversation_manager,
         model=bedrock_model,
         session_manager=session_manager,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=prompt,
         tools=ALL_TOOLS,
     )
 
@@ -225,7 +257,8 @@ async def chat(chat_request: ChatRequest, request: Request):
     else:
         session_id = cookie_session_id or str(uuid.uuid4())
     
-    agent = session(session_id)
+    # Pass user_id to session if authenticated
+    agent = session(session_id, user_id=user_id)
     global current_agent
     current_agent = agent  # Store the current agent for use in tools
     response = StreamingResponse(
@@ -259,7 +292,7 @@ def chat_get(request: Request):
             user_id = claims.get('sub')
             
     session_id = user_id if user_id else request.cookies.get("session_id", str(uuid.uuid4()))
-    agent = session(session_id)
+    agent = session(session_id, user_id=user_id)
 
     # Filter messages to only include first text content
     filtered_messages = []
@@ -298,7 +331,7 @@ async def get_suggestions(request: Request):
             user_id = claims.get('sub')
             
     session_id = user_id if user_id else request.cookies.get("session_id", str(uuid.uuid4()))
-    agent = session(session_id)
+    agent = session(session_id, user_id=user_id)
     
     # Build context from conversation history
     conversation_context = ""
@@ -751,6 +784,187 @@ Find {limit} properties. Use the search_properties tool and return the results a
         logger.error(f"Error generating property suggestions: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to generate suggestions")
 
+
+# --- Favorites API Endpoints ---
+
+@app.get("/api/saved-properties")
+async def get_saved_properties(request: Request, visit_only: bool = False):
+    """Get user's saved properties"""
+    # Check for authentication
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user_id = claims.get('sub')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token: missing sub")
+
+    try:
+        favorites = favorites_manager.get_user_favorites(user_id, visit_only)
+        return Response(
+            content=json.dumps(favorites),
+            media_type="application/json"
+        )
+    except Exception as e:
+        logger.error(f"Error getting favorites: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve favorites")
+
+@app.get("/api/saved-properties/count")
+async def get_favorites_count(request: Request):
+    """Get count of saved properties"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+         raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid token")
+        
+    user_id = claims.get('sub')
+    
+    try:
+        counts = favorites_manager.get_favorites_count(user_id)
+        return Response(
+            content=json.dumps(counts),
+            media_type="application/json"
+        )
+    except Exception as e:
+        logger.error(f"Error getting counts: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get counts")
+
+class SavePropertyRequest(BaseModel):
+    property_id: str
+    property_data: dict
+    is_visit: bool = False
+
+@app.post("/api/saved-properties")
+async def save_property(request: Request, body: SavePropertyRequest):
+    """Save property to favorites"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+         raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid token")
+        
+    user_id = claims.get('sub')
+    
+    try:
+        result = favorites_manager.add_to_favorites(user_id, body.property_data, body.is_visit)
+        return Response(
+            content=json.dumps(result),
+            media_type="application/json",
+            status_code=201
+        )
+    except Exception as e:
+        logger.error(f"Error saving property: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save property")
+
+@app.delete("/api/saved-properties/{property_id}")
+async def delete_property(request: Request, property_id: str):
+    """Remove property from favorites"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+         raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid token")
+        
+    user_id = claims.get('sub')
+    
+    try:
+        favorites_manager.remove_from_favorites(user_id, property_id)
+        return Response(
+            content=json.dumps({"message": "Property removed"}),
+            media_type="application/json"
+        )
+    except Exception as e:
+        logger.error(f"Error deleting property: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete property")
+
+class ToggleVisitRequest(BaseModel):
+    is_visit: bool
+
+@app.patch("/api/saved-properties/{property_id}/visit")
+async def toggle_visit(request: Request, property_id: str, body: ToggleVisitRequest):
+    """Toggle visit list status"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+         raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid token")
+        
+    user_id = claims.get('sub')
+    
+    try:
+        if body.is_visit:
+            # For adding to visit list, we normally need property_data if it's new.
+            # But this endpoint assumes it's updating existing or we can fetch.
+            # However, favorites_manager.add_to_visit_list needs property_data if not found.
+            # Let's try fetching or rely on client? Client should use POST for new items ideally.
+            # But if we just want to promote existing favorite:
+            
+            # Helper to check existence
+            existing = favorites_manager.get_favorite_by_id(user_id, property_id)
+            if existing:
+                result = favorites_manager.add_to_visit_list(user_id, property_id) # No data needed if exists
+                return Response(content=json.dumps(result), media_type="application/json")
+            else:
+                # Need data to add new.
+                # Try fetching from DB cache
+                # We need to import question_manager here or use tools import?
+                # tools.py has question_manager initialized but not exported?
+                # We can import get_property_info_from_db function which uses it.
+                # Actually, `get_property_info_from_db` is a tool function that returns JSON.
+                # We should probably access `QuestionManager` directly if needed, OR 
+                # instruct client to use POST /api/saved-properties with is_visit=True for new items.
+                # Let's return 404 if not found for strict PATCH semantics.
+                raise HTTPException(status_code=404, detail="Property not found in favorites. Use POST to add new property.")
+        else:
+            favorites_manager.remove_from_visit_list(user_id, property_id)
+            # return updated item? 
+            existing = favorites_manager.get_favorite_by_id(user_id, property_id)
+            return Response(content=json.dumps(existing), media_type="application/json")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error toggling visit: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update visit status")
+
+class MergeSessionRequest(BaseModel):
+    sessionId: str
+
+@app.post("/api/merge-session")
+async def merge_session(request: Request, body: MergeSessionRequest):
+    """Merge anonymous session favorites"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+         raise HTTPException(status_code=401, detail="Authentication required")
+    
+    claims = verify_cognito_token(auth_header)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid token")
+        
+    user_id = claims.get('sub')
+    
+    try:
+        count = favorites_manager.merge_session_favorites(body.sessionId, user_id)
+        return Response(
+            content=json.dumps({"merged_count": count}),
+            media_type="application/json"
+        )
+    except Exception as e:
+        logger.error(f"Error merging session: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to merge session")
 
 # Called by the Lambda Adapter to check liveness
 @app.get("/")

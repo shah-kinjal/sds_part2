@@ -2,11 +2,13 @@
     import {
         startPasswordlessSignIn,
         completePasswordlessSignIn,
+        getAuthHeader,
     } from "$lib/auth";
     import { appState } from "$lib/state.svelte";
+    import { mergeSession } from "$lib/api/favorites";
 
     let { isOpen, onClose, onLogin } = $props();
-    
+
     // Debug logging
     $effect(() => {
         console.log("LoginModal isOpen prop changed:", isOpen);
@@ -19,9 +21,19 @@
     let isLoading = $state(false);
     let errorMessage = $state("");
 
+    function getCookie(name: string) {
+        if (typeof document === "undefined") return undefined;
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(";").shift();
+    }
+
     async function handleSubmit(e: Event) {
         e.preventDefault();
-        console.log("=== Login Form Submitted ===", { step, email: email ? "present" : "missing" });
+        console.log("=== Login Form Submitted ===", {
+            step,
+            email: email ? "present" : "missing",
+        });
         errorMessage = "";
         isLoading = true;
 
@@ -43,6 +55,29 @@
                 if (success) {
                     appState.setAuthenticated(true);
                     console.log("✓ Authentication successful!");
+
+                    // Attempt to merge session favorites
+                    try {
+                        const sessionId = getCookie("session_id");
+                        if (sessionId) {
+                            console.log(
+                                "Merging session favorites for:",
+                                sessionId,
+                            );
+                            const headers = await getAuthHeader();
+                            const result = await mergeSession(
+                                sessionId,
+                                headers,
+                            );
+                            console.log(
+                                `Merged ${result.merged_count} favorites.`,
+                            );
+                        }
+                    } catch (mergeError) {
+                        console.error("Error merging session:", mergeError);
+                        // Continue login success even if merge fails
+                    }
+
                     onLogin(email);
                     onCloseInternal();
                 } else {
@@ -69,13 +104,22 @@
 
 {#if isOpen}
     <!-- Ultra-simple test overlay -->
-    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 999999; display: flex; align-items: center; justify-content: center; font-family: Arial;">
-        <div style="background: white; padding: 40px; border-radius: 10px; text-align: center; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-            <h1 style="color: black; font-size: 24px; margin-bottom: 20px;">Sign In</h1>
-            
+    <div
+        style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 999999; display: flex; align-items: center; justify-content: center; font-family: Arial;"
+    >
+        <div
+            style="background: white; padding: 40px; border-radius: 10px; text-align: center; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);"
+        >
+            <h1 style="color: black; font-size: 24px; margin-bottom: 20px;">
+                Sign In
+            </h1>
+
             {#if step === "EMAIL"}
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; color: black; margin-bottom: 8px; text-align: left; font-weight: bold;">Email Address</label>
+                    <label
+                        style="display: block; color: black; margin-bottom: 8px; text-align: left; font-weight: bold;"
+                        >Email Address</label
+                    >
                     <input
                         type="email"
                         bind:value={email}
@@ -85,9 +129,12 @@
                         disabled={isLoading}
                     />
                 </div>
-                
+
                 <button
-                    onclick={(e) => { e.preventDefault(); handleSubmit(e); }}
+                    onclick={(e) => {
+                        e.preventDefault();
+                        handleSubmit(e);
+                    }}
                     style="width: 100%; padding: 12px; background: black; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px;"
                     disabled={isLoading}
                 >
@@ -95,7 +142,10 @@
                 </button>
             {:else}
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; color: black; margin-bottom: 8px; text-align: left; font-weight: bold;">One-Time Password</label>
+                    <label
+                        style="display: block; color: black; margin-bottom: 8px; text-align: left; font-weight: bold;"
+                        >One-Time Password</label
+                    >
                     <input
                         type="text"
                         bind:value={otp}
@@ -104,17 +154,24 @@
                         required
                         disabled={isLoading}
                     />
-                    <p style="color: #666; font-size: 12px; margin-top: 5px; text-align: left;">Check your email for the code.</p>
+                    <p
+                        style="color: #666; font-size: 12px; margin-top: 5px; text-align: left;"
+                    >
+                        Check your email for the code.
+                    </p>
                 </div>
-                
+
                 <button
-                    onclick={(e) => { e.preventDefault(); handleSubmit(e); }}
+                    onclick={(e) => {
+                        e.preventDefault();
+                        handleSubmit(e);
+                    }}
                     style="width: 100%; padding: 12px; background: black; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px;"
                     disabled={isLoading}
                 >
                     {isLoading ? "Processing..." : "Verify & Login"}
                 </button>
-                
+
                 <button
                     onclick={() => (step = "EMAIL")}
                     style="width: 100%; padding: 12px; background: #f5f5f5; color: black; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; cursor: pointer;"
@@ -123,17 +180,20 @@
                     Back
                 </button>
             {/if}
-            
+
             {#if errorMessage}
-                <div style="background: #fee; border: 1px solid #fcc; color: #c00; padding: 10px; border-radius: 6px; margin-top: 15px; font-size: 14px;">
+                <div
+                    style="background: #fee; border: 1px solid #fcc; color: #c00; padding: 10px; border-radius: 6px; margin-top: 15px; font-size: 14px;"
+                >
                     {errorMessage}
                 </div>
             {/if}
-            
+
             <button
                 onclick={onCloseInternal}
                 style="position: absolute; top: 10px; right: 10px; background: transparent; border: none; font-size: 30px; color: #999; cursor: pointer; line-height: 1; width: 40px; height: 40px;"
-            >&times;</button>
+                >&times;</button
+            >
         </div>
     </div>
 {:else}

@@ -83,3 +83,16 @@ export async function signOutUser() {
         console.error('Error signing out:', error);
     }
 }
+
+export async function getAuthHeader(): Promise<HeadersInit> {
+    await configureAmplify();
+    const session = await fetchAuthSession();
+    const token = session.tokens?.idToken?.toString();
+    if (!token) {
+        throw new Error('No authentication token available');
+    }
+    return {
+        'Authorization': `Bearer ${token}`
+    };
+}
+
