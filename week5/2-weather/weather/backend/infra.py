@@ -27,6 +27,8 @@ class Backend(Construct):
                                                  "MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
                                                  "AWS_LWA_INVOKE_MODE": "response_stream",
                                                  "STATE_BUCKET": state_bucket.bucket_name,
+                                                 "BRAVE_API_KEY": "BSAhKtZOdWFs6lQogP20QvaQZnmta4w",
+                                                 "FIRECRAWL_API_KEY": "fc-e12bdf0fc22a4da98cab5943cbb8fd63",
                                             },
                                         )
         _ = state_bucket.grant_read_write(fn)

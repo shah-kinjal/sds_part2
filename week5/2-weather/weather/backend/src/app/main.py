@@ -1,21 +1,18 @@
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional
 from strands import Agent, tool
 from strands.session.s3_session_manager import S3SessionManager
-from strands.agent.conversation_manager import SummarizingConversationManager
 import boto3
-from botocore.exceptions import ClientError
 import json
 import logging
 import os
 import uuid
 import uvicorn
 import requests
-import db_tools
 from strands.models import BedrockModel
-from datetime import datetime, timedelta
+from mcp import stdio_client, StdioServerParameters
+from strands.tools.mcp import MCPClient
 
 model_id = os.environ.get("MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 bedrock_model = BedrockModel(
@@ -24,6 +21,8 @@ bedrock_model = BedrockModel(
     )
 serper_api_key = os.environ.get("SERPER_API_KEY", "7299f48d35af30dedb94d6986f5c93c8d02bf5d3")
 serper_url = os.environ.get("SERPER_URL", "https://google.serper.dev/search")
+brave_api_key = os.environ.get("BRAVE_API_KEY", "")
+firecrawl_api_key = os.environ.get("FIRECRAWL_API_KEY", "")
 state_bucket = os.environ.get("STATE_BUCKET", "")
 state_prefix = os.environ.get("STATE_PREFIX", "sessions/")
 logging.getLogger("strands").setLevel(logging.WARNING)
@@ -47,182 +46,74 @@ boto_session = boto3.Session()
 class ChatRequest(BaseModel):
     prompt: str
 
-def search_web(web_query):
-    """Search the web using Serper API"""
-    print(f"Searching web: {web_query}")
-    payload = json.dumps({"q": web_query})
+@tool
+def search_jobs_google(query: str, location: str = "") -> str:
+    """Search for job openings using Google Search via Serper API.
+
+    Args:
+        query: The job search query (e.g., "Software Engineer jobs", "Data Scientist careers")
+        location: Optional location filter (e.g., "San Francisco", "Remote", "New York")
+
+    Returns:
+        JSON string containing search results with company career pages
+    """
+    logger.info(f"Searching jobs: query={query}, location={location}")
+
+    # Construct search query optimized for company career pages
+    search_query = f"{query} {location} site:careers OR inurl:careers OR inurl:jobs -site:linkedin.com -site:indeed.com -site:glassdoor.com"
+
+    payload = json.dumps({
+        "q": search_query,
+        "num": 20  # Request more results to filter down
+    })
     headers = {
         "X-API-KEY": serper_api_key,
         "Content-Type": "application/json"
     }
-    
+
     try:
         response = requests.post(serper_url, headers=headers, data=payload)
-        print(response.text)
+        logger.info(f"Serper API response status: {response.status_code}")
         return response.text
     except Exception as e:
-        print(f"Error searching web: {e}")
-        return f"Error: {str(e)}"
+        logger.error(f"Error searching jobs: {e}")
+        return json.dumps({"error": str(e)})
 
+def create_mcp_clients():
+    """Create MCP clients for Brave Search and Firecrawl if API keys are available"""
+    mcp_tools = []
 
-def weather_forecast_with_google_search(city: str, days: int = 3):
-    logger.info("Calling weather_forecast via google search tool for city: %s and days: %s", city, days)
-    f"""Search the internet for the latest weather info for a given city and days.
+    # Add Brave Search MCP client if API key is available
+    if brave_api_key:
+        try:
+            brave_client = MCPClient(lambda: stdio_client(
+                StdioServerParameters(
+                    command="npx",
+                    args=["-y", "@modelcontextprotocol/server-brave-search"],
+                    env={"BRAVE_API_KEY": brave_api_key}
+                )
+            ))
+            mcp_tools.append(brave_client)
+            logger.info("Brave Search MCP client created")
+        except Exception as e:
+            logger.warning(f"Failed to create Brave Search client: {e}")
 
-    Args:
-        city: The name of the city
-        days: Number of days for the forecast
-    Returns:
-        A string containing the weather forecast for the {city} for the next {days} days in json format.
-    """
-    query = f"Find the weather now and forecast for {city} for the next {days} days."
-    return search_web(query)
+    # Add Firecrawl MCP client if API key is available
+    if firecrawl_api_key:
+        try:
+            firecrawl_client = MCPClient(lambda: stdio_client(
+                StdioServerParameters(
+                    command="npx",
+                    args=["-y", "firecrawl-mcp-server"],
+                    env={"FIRECRAWL_API_KEY": firecrawl_api_key}
+                )
+            ))
+            mcp_tools.append(firecrawl_client)
+            logger.info("Firecrawl MCP client created")
+        except Exception as e:
+            logger.warning(f"Failed to create Firecrawl client: {e}")
 
-@tool
-def weather_forecast(city: str, days: int = 3) -> str:
-    
-    """Get the latest weather info for a given city and days from the internet.
-
-    Args:
-        city: The name of the city
-        days: Number of days for the forecast
-    """
-    logger.info(" weather_forecast tool called for city: %s and days: %s", city, days)
-    weather_forecast = requests.get(f"https://wttr.in/{city}?format=j1").json()
-    #weather_forecast = res
-    logger.info("Weather forecast for %s is %s", city, weather_forecast)
-    return weather_forecast
-
-@tool
-def get_weater_info_from_cache (city: str) -> Optional[str]:
-    """
-    Retrieve forecast data from  cache for a given city.
-   
-    Args:
-        city: The name of the city to retrieve forecast data for
-    
-    Returns:
-        JSON string containing the forecast data, or None if not found
-    """
-    logger.info(f"get_weater_info_from_cache called for city: {city}")
-    if forecast := db_tools.fetch_forecast_from_cache(city):
-        return forecast
-    return f"No forecast found in the cache for {city}. " 
-
-@tool
-def cache_weather_info(city: str, forecast_json: str) -> str:
-    """
-    Store forecast data in  cache using city as key.
-    The forecast data is cached for 30 minutes.
-    Args:
-        city: The name of the city (used as S3 key)
-        forecast_json: The forecast data in JSON format (as string or dict that will be converted to JSON)
-    
-    Returns:
-        A string indicating success or failure
-    """
-    logger.info(f"cache_weather_info called for city: {city}")
-    db_tools.cache_forecast(city, forcast)
-    return f"Forecast cached successfully for {city}."
-
-@tool
-def store_forecast_in_s3(city: str, forecast_json: str) -> str:
-    """
-    Store forecast data in  cache using city as key.
-    The forecast data is cached for 30 minutes.
-    Args:
-        city: The name of the city (used as S3 key)
-        forecast_json: The forecast data in JSON format (as string or dict that will be converted to JSON)
-    
-    Returns:
-        A string indicating success or failure
-    """
-    logger.info(f"store_forecast_in_s3 called for city: {city}")
-    try:
-        s3_client = boto_session.client('s3')
-        cache_prefix = f"forecast-cache/{city.lower().replace(' ', '_')}.json"
-        
-        # Convert to JSON string if it's a dict
-        if isinstance(forecast_json, dict):
-            forecast_json = json.dumps(forecast_json)
-        elif not isinstance(forecast_json, str):
-            forecast_json = json.dumps(forecast_json)
-        
-        # Calculate expiry time (30 minutes from now)
-        cached_at = datetime.utcnow()
-        expires_at = cached_at + timedelta(minutes=30)
-        
-        # Store JSON with metadata including TTL
-        s3_client.put_object(
-            Bucket=state_bucket,
-            Key=cache_prefix,
-            Body=forecast_json.encode('utf-8'),
-            ContentType='application/json',
-            Metadata={
-                'city': city,
-                'cached_at': cached_at.isoformat(),
-                'expires_at': expires_at.isoformat()
-            }
-        )
-        logger.info(f"Forecast cached in S3 for city: {city} (expires at {expires_at.isoformat()})")
-        return f"Forecast stored in S3 cache for {city} (valid for 30 minutes)."
-    except Exception as e:
-        logger.error(f"Error storing forecast in S3: {e}")
-        return f"Error storing forecast in S3: {str(e)}"
-
-@tool
-def get_forecast_from_s3(city: str) -> Optional[str]:
-    """
-    Retrieve forecast data from  cache for a given city.
-   
-    Args:
-        city: The name of the city to retrieve forecast for
-    
-    Returns:
-        JSON string containing the forecast data, or None if not found
-    """
-    logger.info(f" get_forecast_from_s3 called for city: {city}")
-    try:
-        s3_client = boto_session.client('s3')
-        cache_prefix = f"forecast-cache/{city.lower().replace(' ', '_')}.json"
-        
-        response = s3_client.get_object(
-            Bucket=state_bucket,
-            Key=cache_prefix
-        )
-        
-        # Check expiry from metadata
-        metadata = response.get('Metadata', {})
-        expires_at_str = metadata.get('expires_at')
-        
-        if expires_at_str:
-            try:
-                expires_at = datetime.fromisoformat(expires_at_str)
-                now = datetime.utcnow()
-                
-                # If expired, delete and return None
-                if now > expires_at:
-                    logger.info(f"Forecast expired for city: {city} (expired at {expires_at.isoformat()})")
-                    s3_client.delete_object(Bucket=state_bucket, Key=cache_prefix)
-                    return None
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Could not parse expiry date for {city}: {e}")
-                # Continue to return data if we can't parse expiry
-        
-        # Read and return the JSON content
-        forecast_json = response['Body'].read().decode('utf-8')
-        logger.info(f"Forecast retrieved from S3 for city: {city}")
-        return forecast_json
-    except ClientError as e:
-        error_code = e.response.get('Error', {}).get('Code', '')
-        if error_code == 'NoSuchKey':
-            logger.info(f"No forecast found in S3 for city: {city}")
-            return None
-        logger.error(f"Error retrieving forecast from S3: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"Error retrieving forecast from S3: {e}")
-        return None
+    return mcp_tools
 
 def create_agent(session_id: str) -> Agent:
     session_manager_kwargs = {
@@ -230,46 +121,71 @@ def create_agent(session_id: str) -> Agent:
         "bucket": state_bucket,
         "boto_session": boto_session,
     }
-   
 
     if state_prefix:
         session_manager_kwargs["prefix"] = state_prefix
-    system_prompt = """
-    You are an advisor who is very good at giving advice based on weather conditions. 
-    You answer users specific questions based o the weather in a given city or multiple cities in a region or 
-    country. 
-    
-    When you are asked to answer a specific question based on the wather, keep the answer to the point and concise. No need to provide the whole forcast. 
-    As much as possible, keep the answer to the point and concise. No need to provide the whole forcast when asnwering a specific question.
-    
-    Only provide full forcast when asked to do so specifically. 
-    Otherwise, keep the answer to the point and concise to max 2 lines.
-    
-    Please answer the questions the in the local language of the city or region or country user is inquiring about.
-    
-    If you asked to create weather report or a script, Be witty and slighlty humorous
-    in your answers when appropriate in your responses. 
 
-    You can use tools to get the current weather as well as the forecast for the next n days and answer the question.
-    tools available to you are: 
-    - get_forecast_from_s3: get the forecast from the cache by city name.
-    - weather_forecast: get the current weather as well as the forecast for the next n days from the internet. 
-    - store_forecast_in_s3: add forecast for a given city by city name to th.  
+    system_prompt = """You are a specialized job search assistant that helps users find job openings on company career pages.
 
-    When you need weather forecast for a given city or cities
-    look in the cache for the information first. If the information is not found in the cache, 
-    Search the internet for the latest information and immedialte cache the information in the cache.
-    NOTE: No need to let the user know that you are using the cache or internet. Just use the cache if it is available. 
-    Be less verbose regarding the tools you are using.
-  
-    """
-    
-    tools = [weather_forecast, store_forecast_in_s3, get_forecast_from_s3]
-    #tools = [weather_forecast, get_weater_info_from_cache, cache_weather_info]
+Your approach:
+1. **Gather Requirements**: When a user first asks about jobs, ask clarifying questions:
+   - What is the exact job title or role they're looking for?
+   - What location or area are they interested in? (city, state, country, or "remote")
+   - Any specific industries or company types?
+   - Any experience level preferences? (entry-level, mid-level, senior, etc.)
+
+2. **Search Strategy**: Use search_jobs_google tool to find company career pages:
+   - Focus on company career pages (careers.company.com, jobs.company.com, company.com/careers)
+   - Avoid job aggregators (LinkedIn, Indeed, Glassdoor)
+   - Use location filters when specified
+
+3. **Fetch Details**: If Brave Search or Firecrawl tools are available, use them to:
+   - Get detailed job descriptions from career pages
+   - Extract company information
+   - Verify job posting links are active
+
+4. **Output Format**: Present results as a clean, numbered list (max 10 jobs):
+
+---
+**Job 1: [Job Title]**
+Company: [Company Name]
+Link: [Direct URL]
+Description: [Brief 2-3 sentence summary]
+
+---
+**Job 2: [Job Title]**
+...
+
+5. **Be Concise**:
+   - Don't explain your search process
+   - Don't mention which tools you're using
+   - Just present the job listings
+   - If you find fewer than 10 jobs, that's okay - show what you found
+
+6. **Handle Edge Cases**:
+   - If no jobs found, suggest broader search terms
+   - If location unclear, ask for clarification
+   - If job title is ambiguous, suggest variations
+   - Try to Avoid showing jobs that may be posed on LinkedIn, Indeed, Glassdoor, etc.
+
+Remember: Focus on quality over quantity. Better to show 5 relevant jobs than 10 mediocre matches."""
+
+    # Combine custom tools with MCP tools
+    tools = [search_jobs_google]
+
+    # Add MCP clients if available
+    mcp_tools = create_mcp_clients()
+    if mcp_tools:
+        tools.extend(mcp_tools)
 
     session_manager = S3SessionManager(**session_manager_kwargs)
-    agent = Agent(model=bedrock_model, session_manager=session_manager, tools=tools, system_prompt=system_prompt)
-    logger.info("Agent initialized for session %s", session_id)
+    agent = Agent(
+        model=bedrock_model,
+        session_manager=session_manager,
+        tools=tools,
+        system_prompt=system_prompt
+    )
+    logger.info("Job search agent initialized for session %s with %d tools", session_id, len(tools))
     return agent
 
 app = FastAPI()
@@ -277,7 +193,7 @@ app = FastAPI()
 # Called by the Lambda Adapter to check liveness
 @app.get("/")
 async def root():
-    return {"message": "OK"}
+    return {"message": "Job Search Agent is running"}
 
 @app.get('/chat')
 def chat_history(request: Request):

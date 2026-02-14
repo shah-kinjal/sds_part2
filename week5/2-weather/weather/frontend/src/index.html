@@ -3,23 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weather Forecast Assistant</title>
+    <title>Job Search Helper</title>
     <style>
         :root {
-            --bg1: #0b1020; /* deep navy */
-            --bg2: #0f1b33; /* dark blue */
-            --accent: #22d3ee; /* cyan */
-            --accent-2: #6366f1; /* indigo */
-            --text: #e6f0ff; /* cool light */
-            --muted: #bcd4ff; /* soft blue */
+            --bg1: #1a0f0a; /* deep warm brown */
+            --bg2: #2d1810; /* darker warm brown */
+            --accent: #ff6b35; /* vibrant orange */
+            --accent-2: #f7931e; /* golden orange */
+            --text: #fff5e6; /* warm cream */
+            --muted: #ffd4a3; /* soft peach */
+            --success: #4ade80; /* green for copy success */
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             min-height: 100vh;
             color: var(--text);
-            background: radial-gradient(1200px 600px at -10% -20%, rgba(34,211,238,0.35) 0%, transparent 60%),
-                        radial-gradient(800px 500px at 120% 10%, rgba(99,102,241,0.35) 0%, transparent 60%),
+            background: radial-gradient(1200px 600px at -10% -20%, rgba(255,107,53,0.25) 0%, transparent 60%),
+                        radial-gradient(800px 500px at 120% 10%, rgba(247,147,30,0.25) 0%, transparent 60%),
                         linear-gradient(180deg, var(--bg1), var(--bg2));
             background-attachment: fixed;
             display: flex;
@@ -38,26 +39,57 @@
             padding: 24px;
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12);
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
         }
         h1 {
             margin: 0 0 16px 0;
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 800;
             letter-spacing: .3px;
-            background: linear-gradient(90deg, #ffffff, #bcd4ff, #22d3ee);
+            background: linear-gradient(90deg, #ff6b35, #f7931e, #ffb347);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .ghost-btn { padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.15); color: var(--text); cursor: pointer; font-weight: 600; font-size: 12px; }
-        .ghost-btn:hover { filter: brightness(1.05); }
-        .footer-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; }
+        h1::before {
+            content: '💼';
+            font-size: 32px;
+            filter: drop-shadow(0 2px 4px rgba(255,107,53,0.5));
+        }
+        .ghost-btn { padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.15); color: var(--text); cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s ease; }
+        .ghost-btn:hover { filter: brightness(1.15); transform: scale(1.02); }
+        .header-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .copy-btn {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,107,53,0.2);
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            transition: all 0.2s ease;
+            margin-left: auto;
+        }
+        .copy-btn:hover { background: rgba(255,107,53,0.35); transform: scale(1.05); }
+        .copy-btn.copied { background: var(--success); color: white; }
         /* playful floating orbs */
         .orb { position: absolute; border-radius: 50%; filter: blur(40px); opacity: .25; pointer-events: none; animation: float 16s ease-in-out infinite; }
-        .orb.one { width: 160px; height: 160px; background: #22d3ee55; top: 10%; left: 5%; }
-        .orb.two { width: 220px; height: 220px; background: #6366f155; bottom: 8%; right: 8%; animation-delay: 3s; }
-        @keyframes float { 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-10px) } }
-        /* removed unit toggle */
+        .orb.one { width: 160px; height: 160px; background: #ff6b3555; top: 10%; left: 5%; }
+        .orb.two { width: 220px; height: 220px; background: #f7931e55; bottom: 8%; right: 8%; animation-delay: 3s; }
+        .orb.three { width: 140px; height: 140px; background: #ffb34755; top: 50%; right: 15%; animation-delay: 6s; }
+        @keyframes float { 0%,100%{ transform: translateY(0) rotate(0deg) } 50%{ transform: translateY(-15px) rotate(5deg) } }
+        /* Input form styles */
+        #input-area {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.15);
+        }
         textarea {
             width: 100%;
             padding: 14px;
@@ -70,15 +102,16 @@
             outline: none;
             transition: box-shadow .2s ease, border-color .2s ease, transform .08s ease;
             resize: vertical;
-            min-height: 94px;
+            min-height: 80px;
+            max-height: 150px;
         }
-        textarea::placeholder { color: rgba(255,255,255,0.7); }
+        textarea::placeholder { color: rgba(255,255,255,0.6); font-style: italic; }
         textarea:focus {
             border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(34,211,238,0.25), 0 10px 24px rgba(0,0,0,0.25);
+            box-shadow: 0 0 0 4px rgba(255,107,53,0.25), 0 10px 24px rgba(0,0,0,0.25);
             transform: translateY(-1px);
         }
-        button {
+        button[type="submit"] {
             width: 100%;
             padding: 12px 14px;
             border: none;
@@ -86,65 +119,101 @@
             color: white;
             border-radius: 12px;
             cursor: pointer;
-            font-weight: 600;
-            letter-spacing: .2px;
+            font-weight: 700;
+            letter-spacing: .3px;
             transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
-            box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+            box-shadow: 0 8px 20px rgba(255,107,53,0.35);
+            font-size: 14px;
         }
-        button:hover:not(:disabled) { filter: brightness(1.05); }
-        button:active:not(:disabled) { transform: translateY(1px); }
-        button:disabled { background: linear-gradient(135deg, #808080, #9e9e9e); cursor: not-allowed; filter: grayscale(20%); }
+        button[type="submit"]:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+        button[type="submit"]:active:not(:disabled) { transform: translateY(1px); }
+        button[type="submit"]:disabled { background: linear-gradient(135deg, #808080, #9e9e9e); cursor: not-allowed; filter: grayscale(20%); }
         #response-container {
-            margin-top: 18px;
             padding: 14px;
             background: rgba(0,0,0,0.25);
             border: 1px solid rgba(255,255,255,0.25);
             border-radius: 14px;
             white-space: pre-wrap;
             word-wrap: break-word;
-            min-height: 160px;
-            max-height: 460px;
             overflow-y: auto;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+            flex: 1;
+            min-height: 300px;
         }
         .message {
             padding: 12px 14px;
             margin-bottom: 12px;
             border-radius: 14px;
-            line-height: 1.55;
+            line-height: 1.6;
             border: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+            transition: all 0.2s ease;
         }
-        .user-message { background: linear-gradient(180deg, rgba(34,211,238,0.18), rgba(34,211,238,0.10)); border-left: 4px solid var(--accent); }
-        .assistant-message { background: linear-gradient(180deg, rgba(99,102,241,0.18), rgba(99,102,241,0.10)); border-left: 4px solid var(--accent-2); }
+        .message:hover { transform: translateX(2px); box-shadow: 0 4px 12px rgba(255,107,53,0.15); }
+        .user-message { background: linear-gradient(180deg, rgba(255,107,53,0.18), rgba(255,107,53,0.10)); border-left: 4px solid var(--accent); }
+        .assistant-message { background: linear-gradient(180deg, rgba(247,147,30,0.18), rgba(247,147,30,0.10)); border-left: 4px solid var(--accent-2); }
+        .message-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
         .message strong {
-            display: block;
-            margin-bottom: 5px;
             font-size: 0.85em;
             color: var(--muted);
             letter-spacing: .25px;
+            text-transform: uppercase;
+        }
+        .message-content {
+            color: var(--text);
         }
         /* Markdown formatting */
         .md pre { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; overflow: auto; }
-        .md code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        .md code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(255,107,53,0.15); padding: 2px 6px; border-radius: 4px; }
         .md ul, .md ol { margin: 0 0 12px 18px; padding: 0; }
+        .md li { margin-bottom: 6px; }
         .md blockquote { margin: 8px 0; padding: 8px 12px; border-left: 4px solid var(--accent-2); background: rgba(255,255,255,0.06); border-radius: 6px; }
+        .md a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); transition: all 0.2s ease; }
+        .md a:hover { color: var(--accent-2); border-bottom-style: solid; filter: brightness(1.2); }
+        .md hr { border: none; border-top: 2px solid rgba(255,107,53,0.3); margin: 16px 0; }
+        .md h2, .md h3 { color: var(--accent); margin-top: 16px; margin-bottom: 8px; }
+        .md strong { color: var(--accent-2); font-weight: 700; }
+
+        /* Custom scrollbar */
+        #response-container::-webkit-scrollbar { width: 8px; }
+        #response-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        #response-container::-webkit-scrollbar-thumb { background: rgba(255,107,53,0.5); border-radius: 4px; }
+        #response-container::-webkit-scrollbar-thumb:hover { background: rgba(255,107,53,0.7); }
+
+        /* Loading animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .loading::after {
+            content: '...';
+            animation: pulse 1.5s ease-in-out infinite;
+        }
     </style>
 </head>
 <body>
 
     <div id="chat-container">
-        <h1>Weather Forecast Assistant ✨</h1>
-        <form id="chat-form">
-            <textarea id="prompt-input" rows="4" placeholder="Enter your prompt here..."></textarea>
-            <button type="submit">Send</button>
-        </form>
+        <div class="header-bar">
+            <h1>Job Search Helper</h1>
+            <button type="button" id="clear-chat" class="ghost-btn" title="Clear chat and start fresh">🗑️ Clear</button>
+        </div>
         <div id="response-container"></div>
-        <div class="footer-bar">
-            <button type="button" id="clear-chat" class="ghost-btn" title="Clear chat history">Clear Chat</button>
+        <div id="input-area">
+            <form id="chat-form">
+                <textarea id="prompt-input" rows="3" placeholder="What kind of job are you looking for? (e.g., 'Software Engineer jobs in San Francisco')"></textarea>
+                <button type="submit">🚀 Search Jobs</button>
+            </form>
         </div>
     </div>
     <div class="orb one"></div>
     <div class="orb two"></div>
+    <div class="orb three"></div>
 
     <script>
         const form = document.getElementById('chat-form');
@@ -168,18 +237,48 @@
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', `${role}-message`);
 
+            // Create header with role and copy button
+            const headerDiv = document.createElement('div');
+            headerDiv.classList.add('message-header');
+
             const roleStrong = document.createElement('strong');
             roleStrong.textContent = role.charAt(0).toUpperCase() + role.slice(1);
-            
+
+            const copyBtn = document.createElement('button');
+            copyBtn.classList.add('copy-btn');
+            copyBtn.textContent = '📋 Copy';
+            copyBtn.onclick = () => {
+                const textToCopy = messageDiv.querySelector('.message-content').dataset.raw ||
+                                   messageDiv.querySelector('.message-content').textContent;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    copyBtn.textContent = '✅ Copied!';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = '📋 Copy';
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    copyBtn.textContent = '❌ Failed';
+                    setTimeout(() => {
+                        copyBtn.textContent = '📋 Copy';
+                    }, 2000);
+                });
+            };
+
+            headerDiv.appendChild(roleStrong);
+            headerDiv.appendChild(copyBtn);
+
             const contentDiv = document.createElement('div');
+            contentDiv.classList.add('message-content');
             contentDiv.textContent = text;
-            
-            messageDiv.appendChild(roleStrong);
+
+            messageDiv.appendChild(headerDiv);
             messageDiv.appendChild(contentDiv);
-            
+
             responseContainer.appendChild(messageDiv);
             responseContainer.scrollTop = responseContainer.scrollHeight;
-            
+
             return contentDiv;
         }
 
@@ -187,31 +286,42 @@
             // Clear chat handler: remove session cookie and reload
             const clearBtn = document.getElementById('clear-chat');
             clearBtn.addEventListener('click', () => {
-                // Delete session cookie
-                document.cookie = 'session_id=; Max-Age=0; path=/';
-                // Clear UI and reload to start fresh session
-                responseContainer.innerHTML = '';
-                location.reload();
+                if (confirm('Clear chat history and start fresh?')) {
+                    // Delete session cookie
+                    document.cookie = 'session_id=; Max-Age=0; path=/';
+                    // Clear UI and reload to start fresh session
+                    responseContainer.innerHTML = '';
+                    location.reload();
+                }
             });
             try {
                 const response = await fetch('/chat');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
-                
+
                 if (data.messages && data.messages.length > 0) {
                     responseContainer.innerHTML = '';
                     data.messages.forEach(msg => {
                         const fullText = msg.content.map(c => c.text).join('\n');
                         const el = displayMessage(msg.role, fullText);
+                        el.dataset.raw = fullText;
                         if (msg.role === 'assistant') {
                             el.classList.add('md');
-                            el.innerHTML = renderMarkdown(el.textContent);
+                            el.innerHTML = renderMarkdown(fullText);
                         }
                     });
+                } else {
+                    // Show welcome message if no history
+                    const welcomeText = "👋 Hey there! I'm your Job Search Helper. I'll help you find job openings on company career pages (not just job boards).\n\nTell me what kind of job you're looking for, and I'll ask a few questions to help narrow down the search!";
+                    const el = displayMessage('assistant', welcomeText);
+                    el.dataset.raw = welcomeText;
+                    el.classList.add('md');
+                    el.innerHTML = renderMarkdown(welcomeText);
                 }
             } catch (error) {
                 console.error('Failed to load chat history:', error);
-                responseContainer.innerHTML = 'Error loading chat history.';
+                const errorText = '⚠️ Error loading chat history. You can still start searching for jobs!';
+                displayMessage('assistant', errorText);
             }
         });
 
@@ -220,11 +330,14 @@
             const prompt = promptInput.value.trim();
             if (!prompt) return;
 
-            displayMessage('user', prompt);
+            const userContentDiv = displayMessage('user', prompt);
+            userContentDiv.dataset.raw = prompt;
             promptInput.value = '';
             submitButton.disabled = true;
+            submitButton.textContent = '⏳ Searching...';
 
-            const assistantContentDiv = displayMessage('assistant', '...');
+            const assistantContentDiv = displayMessage('assistant', 'Searching for jobs');
+            assistantContentDiv.classList.add('loading');
 
             try {
                 const response = await fetch('/chat', {
@@ -238,7 +351,8 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
+                assistantContentDiv.classList.remove('loading');
                 assistantContentDiv.textContent = '';
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -247,7 +361,7 @@
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    
+
                     buffer += decoder.decode(value, { stream: true });
                     const messages = buffer.split('\n\n');
                     buffer = messages.pop();
@@ -270,16 +384,22 @@
                             const dataLine = message.split('\n')[1];
                             const data = dataLine.substring(5).trim();
                             const errorPayload = JSON.parse(data);
-                            assistantContentDiv.textContent = `Error: ${errorPayload.error}`;
+                            assistantContentDiv.classList.remove('loading');
+                            assistantContentDiv.textContent = `❌ Error: ${errorPayload.error}`;
+                            assistantContentDiv.dataset.raw = `Error: ${errorPayload.error}`;
                             console.error("Server error:", errorPayload.error);
                         }
                     }
                 }
             } catch (error) {
-                assistantContentDiv.textContent = 'Error: ' + error.message;
+                assistantContentDiv.classList.remove('loading');
+                const errorMsg = '❌ Error: ' + error.message;
+                assistantContentDiv.textContent = errorMsg;
+                assistantContentDiv.dataset.raw = errorMsg;
                 console.error('Fetch error:', error);
             } finally {
                 submitButton.disabled = false;
+                submitButton.textContent = '🚀 Search Jobs';
                 promptInput.focus();
             }
         });
@@ -290,14 +410,21 @@
         function renderMarkdown(text){
             if (!text) return '';
             let t = text;
+            // Handle horizontal rules (---)
+            t = t.replace(/^---+$/gm, '<hr>');
+            // Code blocks
             t = t.replace(/```([\s\S]*?)```/g, (m, g1) => `<pre><code>${escapeHtml(g1)}</code></pre>`);
             t = t.replace(/`([^`]+)`/g, (m, g1) => `<code>${escapeHtml(g1)}</code>`);
+            // Links
             t = t.replace(/(https?:\/\/[\w.-]+(?:\/[\w\-._~:\/?#[\]@!$&'()*+,;=%]*)?)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1<\/a>');
+            // Headers
             t = t.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
                  .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
                  .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+            // Bold and italic
             t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
                  .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            // Lists
             t = t.replace(/(^|\n)(?:- |\* )(.*(?:\n(?:- |\* ).*)*)/g, (m, p1, items) => {
                 const lis = items.split(/\n/).map(l => l.replace(/^(?:- |\* )/, '')).map(s => `<li>${s}</li>`).join('');
                 return `${p1}<ul>${lis}</ul>`;
@@ -306,9 +433,12 @@
                 const lis = items.split(/\n/).map(l => l.replace(/^\d+\.\s*/, '')).map(s => `<li>${s}</li>`).join('');
                 return `${p1}<ol>${lis}</ol>`;
             });
+            // Blockquotes
             t = t.replace(/^(>\s?.+)$/gm, (m) => `<blockquote>${m.replace(/^>\s?/, '')}</blockquote>`);
+            // Convert remaining text to paragraphs
             const blocks = t.split(/\n\n+/).map(b => b.trim()).filter(Boolean).map(b => {
-                if (b.startsWith('<h') || b.startsWith('<ul>') || b.startsWith('<ol>') || b.startsWith('<pre>') || b.startsWith('<blockquote>')) return b;
+                if (b.startsWith('<h') || b.startsWith('<ul>') || b.startsWith('<ol>') ||
+                    b.startsWith('<pre>') || b.startsWith('<blockquote>') || b === '<hr>') return b;
                 return `<p>${b.replace(/\n/g, '<br>')}</p>`;
             }).join('\n');
             return blocks;
